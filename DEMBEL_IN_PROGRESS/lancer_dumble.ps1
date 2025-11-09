@@ -2,7 +2,7 @@ $PORT = 8000
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 cd $scriptPath
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "🃏 JEU DU DUMBLE" -ForegroundColor Green
+Write-Host "🃏 JEU DU Dembel" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 if (-not (Test-Path "index.html")) {

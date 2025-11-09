@@ -66,11 +66,11 @@ def jouer():
     main_ordi = [piocher(paquet) for _ in range(7)]
     defausse = [piocher(paquet)]  # première carte de la défausse
 
-    print("=== 🃏 Jeu du DUMBLE (Python CLI) ===")
+    print("=== 🃏 Jeu du Dembel (Python CLI) ===")
     print("Tu joues contre l'ordinateur. Le but : minimiser tes points.\n")
 
-    dumble_joueur = False
-    dumble_ordi = False
+    Dembel_joueur = False
+    Dembel_ordi = False
 
     while True:
         # Carte visible pour le joueur au début du tour
@@ -87,11 +87,11 @@ def jouer():
         pts = calcul_points(main_joueur)
         print(f"➡️  Total actuel : {pts} points\n")
 
-        # --- Début du tour : annoncer Dumble si possible ---
+        # --- Début du tour : annoncer Dembel si possible ---
         if pts <= 10:
-            rep = input(f"Tu as {pts} points. Veux-tu annoncer DUMBLE au début de ton tour ? [O/N] : ").strip().upper()
+            rep = input(f"Tu as {pts} points. Veux-tu annoncer Dembel au début de ton tour ? [O/N] : ").strip().upper()
             if rep == "O":
-                dumble_joueur = True
+                Dembel_joueur = True
                 break
 
         # --- Défausse du joueur ---
@@ -151,8 +151,8 @@ def jouer():
             main_ordi.append(piocher(paquet))
         pts_ordi = calcul_points(main_ordi)
         if pts_ordi <= 10 and random.randint(0,3) == 0:
-            dumble_ordi = True
-            print(f"💻 L'ordinateur annonce DUMBLE ! ({pts_ordi} pts)")
+            Dembel_ordi = True
+            print(f"💻 L'ordinateur annonce Dembel ! ({pts_ordi} pts)")
             break
 
     # --- Fin de manche ---
@@ -170,22 +170,22 @@ def jouer():
         print(" -", c)
     print("→", pts_ordi, "points\n")
 
-    if dumble_joueur:
+    if Dembel_joueur:
         if pts <= pts_ordi:
             print("🎉 Tu gagnes la manche !")
         else:
             print("😬 Tu as perdu, tes points sont doublés.")
             pts *= 2
-    elif dumble_ordi:
+    elif Dembel_ordi:
         if pts_ordi <= pts:
             print("💻 L'ordinateur gagne la manche !")
         else:
             print("🎉 Tu gagnes la manche !")
     else:
-        print("Fin de manche sans Dumble annoncé.")
+        print("Fin de manche sans Dembel annoncé.")
 
     print(f"\nRésultat final : Toi = {pts} pts | Ordi = {pts_ordi} pts")
-    print("Merci d'avoir joué à DUMBLE 🃏")
+    print("Merci d'avoir joué à Dembel 🃏")
 
 # --- Lancer le jeu ---
 if __name__ == "__main__":

@@ -65,9 +65,9 @@ def tour_joueur(joueur, pioche, derniere_defausse, defausse, premier_tour=False)
     pts = calcul_points(joueur["main"])
     print(f"➡️ Total actuel : {pts} points")
 
-    # --- DUMBLE ---
+    # --- Dembel ---
     if joueur["humain"] and pts <= 10:
-        rep = input(f"Tu as {pts} points. Veux-tu annoncer DUMBLE ? [O/N] ").strip().upper()
+        rep = input(f"Tu as {pts} points. Veux-tu annoncer Dembel ? [O/N] ").strip().upper()
         if rep == "O":
             return True, []
 
@@ -148,17 +148,17 @@ def jouer_manche(joueurs):
     else:
         print("Erreur : la pioche est vide !")
 
-    dumble = False
+    Dembel = False
     n = len(joueurs)
     tour = 0
     derniere_defausse_joueur = [[] for _ in joueurs]
 
-    while not dumble:
+    while not Dembel:
         joueur = joueurs[tour % n]
         premier = (tour == 0)
-        dumble, jc = tour_joueur(joueur, paquet, derniere_defausse_joueur[(tour - 1) % n], defausse, premier_tour=premier)
+        Dembel, jc = tour_joueur(joueur, paquet, derniere_defausse_joueur[(tour - 1) % n], defausse, premier_tour=premier)
         derniere_defausse_joueur[tour % n] = jc
-        if dumble:
+        if Dembel:
             break
         tour += 1
 
@@ -171,7 +171,7 @@ def jouer_manche(joueurs):
     return scores
 
 def jouer_multijoueur():
-    print("=== 🃏 Jeu du DUMBLE Multi-joueurs ===")
+    print("=== 🃏 Jeu du Dembel Multi-joueurs ===")
     max_joueurs = 5
     while True:
         nb_h = int(input("Nombre de joueurs humains (1-4) : "))

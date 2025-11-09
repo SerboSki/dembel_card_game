@@ -1,4 +1,4 @@
-# 🃏 JEU DU DUMBLE - Version V7 CORRIGÉE
+# 🃏 JEU DU Dembel - Version V7 CORRIGÉE
 
 ## ✅ Bugs Fixés:
 
@@ -21,12 +21,12 @@
 ## 🚀 Démarrage
 
 ### Windows
-**Double-cliquez `lancer_dumble.bat`**
+**Double-cliquez `lancer_Dembel.bat`**
 
 ### macOS/Linux
 ```bash
-chmod +x lancer_dumble.sh
-./lancer_dumble.sh
+chmod +x lancer_Dembel.sh
+./lancer_Dembel.sh
 ```
 
 ## 🎮 Comment Jouer

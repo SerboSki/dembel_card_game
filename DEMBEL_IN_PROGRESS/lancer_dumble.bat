@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 echo.
 echo ========================================
-echo 🃏 JEU DU DUMBLE
+echo 🃏 JEU DU Dembel
 echo ========================================
 echo.
 set PORT=8000

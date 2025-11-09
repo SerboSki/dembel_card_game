@@ -11,7 +11,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 def main():
     os.chdir(Path(__file__).parent)
     print("="*60)
-    print("🃏 JEU DU DUMBLE - Serveur de lancement")
+    print("🃏 JEU DU Dembel - Serveur de lancement")
     print("="*60)
     print(f"✨ Démarrage du serveur sur le port {PORT}...")
     print(f"🌐 Accès: http://localhost:{PORT}")

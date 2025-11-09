@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "=========================================="
-echo "🃏 JEU DU DUMBLE"
+echo "🃏 JEU DU Dembel"
 echo "=========================================="
 echo ""
 PORT=8000

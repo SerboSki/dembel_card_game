@@ -1,11 +1,11 @@
-# 🃏 JEU DU DUMBLE - Package Complet
+# 🃏 JEU DU Dembel - Package Complet
 
-Bienvenue! Vous avez téléchargé le jeu DUMBLE avec tous les scripts de lancement.
+Bienvenue! Vous avez téléchargé le jeu Dembel avec tous les scripts de lancement.
 
 ## 🚀 DÉMARRAGE RAPIDE
 
 ### Pour Windows 🪟
-1. **Double-cliquez sur `lancer_dumble.bat`**
+1. **Double-cliquez sur `lancer_Dembel.bat`**
 2. Le jeu s'ouvre automatiquement dans votre navigateur
 3. C'est tout! 🎮
 
@@ -13,41 +13,41 @@ Bienvenue! Vous avez téléchargé le jeu DUMBLE avec tous les scripts de lancem
 1. Ouvrez un terminal dans ce dossier
 2. Tapez:
 ```bash
-chmod +x lancer_dumble.sh
-./lancer_dumble.sh
+chmod +x lancer_Dembel.sh
+./lancer_Dembel.sh
 ```
 
 ### Pour Linux 🐧
 1. Ouvrez un terminal dans ce dossier
 2. Tapez:
 ```bash
-chmod +x lancer_dumble.sh
-./lancer_dumble.sh
+chmod +x lancer_Dembel.sh
+./lancer_Dembel.sh
 ```
 
 ### Avec Python (tous les OS) 🐍
 1. Ouvrez un terminal dans ce dossier
 2. Tapez:
 ```bash
-python lancer_dumble.py
+python lancer_Dembel.py
 # ou
-python3 lancer_dumble.py
+python3 lancer_Dembel.py
 ```
 
 ## 📦 Contenu du dossier
 
 ```
-📦 dumble-complet/
+📦 Dembel-complet/
 ├── 🎮 Fichiers du jeu:
 │   ├── index.html         - Page principale
 │   ├── style.css          - Design
 │   └── game.js            - Logique du jeu
 │
 ├── 🚀 Scripts de lancement:
-│   ├── lancer_dumble.bat  - Windows (le plus simple)
-│   ├── lancer_dumble.ps1  - Windows (PowerShell)
-│   ├── lancer_dumble.sh   - macOS/Linux
-│   └── lancer_dumble.py   - Python (tous les OS)
+│   ├── lancer_Dembel.bat  - Windows (le plus simple)
+│   ├── lancer_Dembel.ps1  - Windows (PowerShell)
+│   ├── lancer_Dembel.sh   - macOS/Linux
+│   └── lancer_Dembel.py   - Python (tous les OS)
 │
 └── 📄 Documentation:
     ├── README.md          - Ce fichier
@@ -65,7 +65,7 @@ python3 lancer_dumble.py
 ## 📋 Règles du jeu
 
 ### Objectif
-Être le premier à crier "DUMBLE" avec 10 points ou moins!
+Être le premier à crier "Dembel" avec 10 points ou moins!
 
 ### Points par carte
 - As = 1 point
@@ -112,7 +112,7 @@ sudo apt-get install python3
 → Ouvrez manuellement http://localhost:8000
 
 ### "Accès refusé" (macOS/Linux)
-→ Tapez: `chmod +x lancer_dumble.sh` avant de lancer
+→ Tapez: `chmod +x lancer_Dembel.sh` avant de lancer
 
 ## 🎮 Comment jouer
 
@@ -123,7 +123,7 @@ sudo apt-get install python3
 5. Sélectionnez des cartes à défausser
 6. Cliquez "Défausser"
 7. Pichez une carte
-8. Quand vous avez ≤10 points, cliquez "DUMBLE!"
+8. Quand vous avez ≤10 points, cliquez "Dembel!"
 
 ## 📞 Support
 
@@ -135,7 +135,7 @@ Si vous avez des problèmes:
 
 ## ✨ Caractéristiques
 
-✅ Jeu DUMBLE complet  
+✅ Jeu Dembel complet  
 ✅ Multijoueur (2-5 joueurs)  
 ✅ Joueurs IA intelligents  
 ✅ Mode Rapide et Complet  
