@@ -1,0 +1,748 @@
+###game.js
+class DumbleGame {
+    constructor() {
+        this.valeurs = ["As","2","3","4","5","6","7","8","9","10","Valet","Dame","Roi"];
+        this.couleurs = ["Trèfle","Carreau","Cœur","Pique"];
+        this.couleurs_symboles = { "Trèfle":"♣","Carreau":"♦","Cœur":"♥","Pique":"♠" };
+        this.couleurs_couleur = { "Trèfle":"black","Carreau":"red","Cœur":"red","Pique":"black" };
+
+        this.points_valeur = {};
+        this.valeurs.forEach((v,i)=>{ this.points_valeur[v] = Math.min(i+1,10); });
+
+        this.joueurs = [];
+        this.mode = "rapide";
+        this.scores_cumulatifs = {};
+        this.manche_actuelle = 1;
+        this.pioche = [];
+        this.defausse = [];
+        this.tour_actuel = 0;
+        this.derniere_defausse_joueur = [];
+        this.game_over = false;
+        this.messages = [];
+        this.game_state = "waiting_discard";
+    }
+
+    creerPaquet() {
+        const paquet = [];
+        for(let v of this.valeurs){
+            for(let c of this.couleurs){
+                paquet.push({valeur:v,couleur:c});
+            }
+        }
+        return this.melanger(paquet);
+    }
+
+    melanger(tableau){
+        for(let i=tableau.length-1;i>0;i--){
+            const j = Math.floor(Math.random()*(i+1));
+            [tableau[i], tableau[j]] = [tableau[j], tableau[i]];
+        }
+        return tableau;
+    }
+
+    calculPoints(main){
+        return main.reduce((sum, carte)=>sum+this.points_valeur[carte.valeur],0);
+    }
+
+    piocher(){
+        if(this.pioche.length===0){
+            if(this.defausse.length<=1) return null;
+            const nouvelle_pioche = this.defausse.slice(0,-1);
+            this.defausse = this.defausse.slice(-1);
+            this.pioche = this.melanger(nouvelle_pioche);
+        }
+        return this.pioche.length>0 ? this.pioche.shift() : null;
+    }
+
+    valideDefausse(indices, main){
+        if(indices.length===0 || indices.length>4) return false;
+        const cartes = indices.map(i=>main[i]);
+        if(indices.length===1) return true;
+        const valeurs = cartes.map(c=>c.valeur);
+        if(valeurs.every(v=>v===valeurs[0])) return true;
+        if(indices.length===3){
+            const couleurs = cartes.map(c=>c.couleur);
+            if(couleurs.every(c=>c===couleurs[0])){
+                const ordre = this.valeurs;
+                const indices_vals = valeurs.map(v=>ordre.indexOf(v)).sort((a,b)=>a-b);
+                if(indices_vals[2]-indices_vals[0]===2 && indices_vals[1]-indices_vals[0]===1){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    initialiserManche(){
+        this.pioche = this.creerPaquet();
+        this.defausse = [];
+        this.derniere_defausse_joueur = new Array(this.joueurs.length).fill([]);
+        for(let j of this.joueurs){
+            j.main=[];
+            for(let i=0;i<7;i++){
+                const carte = this.piocher();
+                if(carte) j.main.push(carte);
+            }
+        }
+        const premiere_carte = this.piocher();
+        if(premiere_carte) this.defausse.push(premiere_carte);
+    }
+
+    addMessage(msg){ this.messages.push(msg); }
+    clearMessages(){ this.messages=[]; }
+
+    tourJoueur(indices_a_defausser){
+        const joueur = this.joueurs[this.tour_actuel];
+        if(!this.valideDefausse(indices_a_defausser, joueur.main)){
+            this.addMessage("⚠️ Défausse invalide!");
+            return false;
+        }
+        const cartes_defaussees = [];
+        const indices_sorted = indices_a_defausser.sort((a,b)=>b-a);
+        for(let i of indices_sorted){
+            cartes_defaussees.push(joueur.main[i]);
+            joueur.main.splice(i,1);
+        }
+        this.defausse.push(...cartes_defaussees);
+        this.derniere_defausse_joueur[this.tour_actuel]=cartes_defaussees;
+        this.game_state="waiting_draw";
+        return true;
+    }
+
+    piocherCarte(carte){
+        const joueur = this.joueurs[this.tour_actuel];
+        let carte_piochee=null;
+        if(carte==="pioche") carte_piochee=this.piocher();
+        else if(carte && carte.valeur){
+            carte_piochee=carte;
+            const idx = this.defausse.indexOf(carte_piochee);
+            if(idx!==-1) this.defausse.splice(idx,1);
+        }
+        if(carte_piochee) joueur.main.push(carte_piochee);
+        this.tour_actuel=(this.tour_actuel+1)%this.joueurs.length;
+        this.game_state="waiting_discard";
+        return true;
+    }
+
+    canCallDumble(){
+        const joueur=this.joueurs[this.tour_actuel];
+        const pts=this.calculPoints(joueur.main);
+        return pts<=10;
+    }
+
+    dumble(){
+        const joueur=this.joueurs[this.tour_actuel];
+        const pts=this.calculPoints(joueur.main);
+        return pts<=10;
+    }
+
+    finManche(){
+        const scores={};
+        for(let j of this.joueurs) scores[j.nom]=this.calculPoints(j.main);
+        return scores;
+    }
+}
+
+// Gestion interface et interactions
+let game=null;
+let selected_cards=[];
+
+function toggleCard(idx){
+    if(game.game_state!=="waiting_discard") return;
+    if(selected_cards.includes(idx)) selected_cards=selected_cards.filter(i=>i!==idx);
+    else if(selected_cards.length<4) selected_cards.push(idx);
+    render();
+}
+
+function render(){
+    const app=document.getElementById("app");
+    if(!game) app.innerHTML=renderSetup();
+    else if(game.game_over) app.innerHTML=renderGameOver();
+    else app.innerHTML=renderGameBoard();
+}
+
+function renderSetup(){
+    return `<div class="container"><div class="setup-screen">
+        <h1>🃏 JEU DU DUMBLE</h1>
+        <div class="form-group">
+            <label>👥 Nombre de joueurs humains (1-4):</label>
+            <input type="number" id="nb_humains" min="1" max="4" value="1">
+        </div>
+        <div class="form-group">
+            <label>🤖 Nombre d'IA (0-4):</label>
+            <input type="number" id="nb_ia" min="0" max="4" value="1">
+        </div>
+        <div class="form-group">
+            <label>⚙️ Mode de jeu:</label>
+            <div class="button-group">
+                <button onclick="selectMode('rapide')">🏃 Rapide</button>
+                <button onclick="selectMode('complet')">🎮 Complet</button>
+            </div>
+        </div>
+        <button onclick="startGame()" style="width:100%; padding:14px; font-size:16px;">▶️ Commencer</button>
+    </div></div>`;
+}
+
+function selectMode(mode){
+    const buttons=document.querySelectorAll(".button-group button");
+    buttons.forEach(btn=>btn.style.background="#667eea");
+    const idx=mode==="rapide"?0:1;
+    buttons[idx].style.background="#764ba2";
+    window.selected_mode=mode;
+}
+
+function startGame(){
+    const nb_humains=parseInt(document.getElementById("nb_humains").value);
+    const nb_ia=parseInt(document.getElementById("nb_ia").value);
+    const mode=window.selected_mode||"rapide";
+    if(nb_humains+nb_ia<2 || nb_humains+nb_ia>5){
+        alert("❌ Entre 2 et 5 joueurs!");
+        return;
+    }
+    game=new DumbleGame();
+    game.mode=mode;
+    for(let i=0;i<nb_humains;i++) game.joueurs.push({nom:`👤 Joueur ${i+1}`,main:[],humain:true});
+    for(let i=0;i<nb_ia;i++) game.joueurs.push({nom:`🤖 Ordi ${i+1}`,main:[],humain:false});
+    for(let j of game.joueurs) game.scores_cumulatifs[j.nom]=0;
+    startRound();
+}
+
+function startRound(){
+    selected_cards=[];
+    game.clearMessages();
+    game.initialiserManche();
+    game.tour_actuel=0;
+    game.game_state="waiting_discard";
+    window.dumble_called=false;
+    playRound();
+}
+
+function playRound(){
+    const joueur=game.joueurs[game.tour_actuel];
+    if(!joueur.humain && game.game_state==="waiting_discard"){
+        game.addMessage(`Tour de ${joueur.nom}...`);
+        setTimeout(()=>playAITurn(),1200);
+    }
+    render();
+}
+
+function playAITurn(){
+    const joueur=game.joueurs[game.tour_actuel];
+    let indices=[0];
+    if(joueur.main.length>=2 && joueur.main[0].valeur===joueur.main[1].valeur) indices=[0,1];
+    if(game.tourJoueur(indices)){
+        game.addMessage(`${joueur.nom} défausse...`);
+        setTimeout(()=>{
+            game.piocherCarte("pioche");
+            game.clearMessages();
+            playRound();
+        },800);
+    }
+}
+
+// Render cartes
+function renderCard(carte,isSelectable=false,cardIdx=-1){
+    const classStr=isSelectable?(selected_cards.includes(cardIdx)?'card selectable selected':'card selectable'):'card';
+    const onclickStr=isSelectable?`onclick="toggleCard(${cardIdx})"`:'';
+    return `<div ${onclickStr} class="${classStr}">
+        <div class="card-value">${carte.valeur}</div>
+        <div class="card-suit ${game.couleurs_couleur[carte.couleur]}">${game.couleurs_symboles[carte.couleur]}</div>
+        <div class="card-name">${carte.couleur}</div>
+    </div>`;
+}
+
+function renderGameBoard(){
+    const joueur_actuel=game.joueurs[game.tour_actuel];
+    const pts=game.calculPoints(joueur_actuel.main);
+    const canDumble=game.canCallDumble();
+
+    let html=`<div class="container"><div class="game-board">`;
+    html+=`<div class="header"><h3>Manche ${game.manche_actuelle}</h3><span class="current-player">${joueur_actuel.nom}</span></div>`;
+
+    // Messages
+    for(let msg of game.messages) html+=`<div class="message info">${msg}</div>`;
+
+    // Défausse au-dessus de la main
+    if(game.defausse.length>0){
+        html+=`<div class="info-display"><h4>📜 Défausse (dernière carte):</h4><div class="info-cards-row">`;
+        const lastCard=game.defausse[game.defausse.length-1];
+        html+=renderCard(lastCard,false);
+        html+=`<button onclick="drawFromDefausse(${game.defausse.length-1})">Piocher</button>`;
+        html+=`</div></div>`;
+    }
+
+    // Main du joueur
+    if(joueur_actuel.humain){
+        html+=`<div class="player-hand"><h3>🎴 Votre main</h3>`;
+        html+=`<div class="points-display${canDumble?' ready':''}">${pts} points</div>`;
+        if(canDumble) html+=`<button onclick="callDumble()" style="margin-bottom:12px; background:#28a745; width:100%; padding:14px;">🎯 DUMBLE!</button>`;
+        html+=`<div class="hand-cards">`;
+        for(let i=0;i<joueur_actuel.main.length;i++) html+=renderCard(joueur_actuel.main[i],true,i);
+        html+=`</div>`;
+        html+=`<div class="action-section"><h4>Sélectionnez 1-4 cartes</h4>
+            <div class="button-group">
+                <button onclick="defausse()">✅ Défausser</button>
+                <button onclick="resetSelection()" class="secondary">🔄 Réinitialiser</button>
+            </div>
+        </div></div>`;
+    }
+
+    html+=`</div></div>`;
+    return html;
+}
+
+function resetSelection(){ selected_cards=[]; game.clearMessages(); render(); }
+
+function defausse(){
+    if(game.game_state!=="waiting_discard") return;
+    if(selected_cards.length===0){ game.addMessage("⚠️ Sélectionnez au moins une carte!"); render(); return; }
+    if(game.tourJoueur(selected_cards)){ selected_cards=[]; game.clearMessages(); render(); }
+    else setTimeout(()=>{ selected_cards=[]; render(); },500);
+}
+
+function drawFromPile(){
+    if(game.game_state!=="waiting_draw") return;
+    game.piocherCarte("pioche");
+    game.clearMessages();
+    playRound();
+}
+
+function drawFromDefausse(index){
+    const carte=game.defausse[index];
+    if(carte){
+        game.piocherCarte(carte);
+        game.defausse.splice(index,1);
+    }
+    game.clearMessages();
+    playRound();
+}
+
+function callDumble(){
+    if(game.game_state!=="waiting_discard") return;
+    if(!game.dumble()){ game.addMessage("❌ Vous devez avoir 10 points ou moins!"); render(); return; }
+    window.dumble_called=true;
+    endRound();
+}
+
+function endRound(){
+    const scores=game.finManche();
+    for(let nom in scores) game.scores_cumulatifs[nom]+=scores[nom];
+
+    if(game.mode==="rapide"){ game.game_over=true; render(); }
+    else{
+        for(let nom in game.scores_cumulatifs){
+            if(game.scores_cumulatifs[nom]>=100){
+                if(game.scores_cumulatifs[nom]===100) game.scores_cumulatifs[nom]=50;
+                else game.game_over=true;
+            }
+        }
+        if(game.game_over) render();
+        else { game.manche_actuelle++; setTimeout(()=>startRound(),2000); }
+    }
+}
+
+function renderGameOver(){
+    const scores=game.scores_cumulatifs;
+    const sorted=Object.entries(scores).sort((a,b)=>a[1]-b[1]);
+    const winner=sorted[0];
+
+    let html=`<div class="container"><h1>🎉 PARTIE TERMINÉE 🎉</h1>`;
+    html+=`<div class="winner"><h2>🥇 ${winner[0]}</h2><p>a remporté avec ${winner[1]} points!</p></div>`;
+    html+=`<h3>Résultats:</h3><table class="scores-table">`;
+    html+=`<tr><th>Position</th><th>Joueur</th><th>Points</th></tr>`;
+    for(let i=0;i<sorted.length;i++){
+        const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1;
+        html+=`<tr><td>${medal}</td><td>${sorted[i][0]}</td><td>${sorted[i][1]}</td></tr>`;
+    }
+    html+=`</table><div style="text-align:center;"><button onclick="newGame()">🔄 Nouvelle partie</button></div></div>`;
+    return html;
+}
+
+function newGame(){ game=null; selected_cards=[]; window.selected_mode=null; render(); }
+
+render();
+###index.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Jeu du DUMBLE</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app"></div>
+    <script src="game.js"></script>
+</body>
+</html>
+###lancer_dumble.py
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import http.server, socketserver, webbrowser, time, os, sys
+from pathlib import Path
+
+PORT = 8000
+class MyHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):
+        print(f"[{self.log_date_time_string()}] {format % args}")
+
+def main():
+    os.chdir(Path(__file__).parent)
+    print("="*60)
+    print("🃏 JEU DU DUMBLE - Serveur de lancement")
+    print("="*60)
+    print(f"✨ Démarrage du serveur sur le port {PORT}...")
+    print(f"🌐 Accès: http://localhost:{PORT}")
+    print("❌ Appuyez sur Ctrl+C pour arrêter le serveur")
+    print("="*60)
+    with socketserver.TCPServer(("", PORT), MyHandler) as httpd:
+        print("✅ Serveur démarré!")
+        time.sleep(1)
+        print("🚀 Ouverture du navigateur...")
+        webbrowser.open(f"http://localhost:{PORT}")
+        try: httpd.serve_forever()
+        except KeyboardInterrupt: print("\n🛑 Serveur arrêté."); sys.exit(0)
+
+if __name__=="__main__":
+    main()
+###style.css
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    padding: 25px;
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h1, h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 2em;
+}
+
+h3 {
+    color: #667eea;
+    margin-bottom: 12px;
+    font-size: 1.2em;
+}
+
+h4 {
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+}
+
+.setup-screen {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 30px;
+}
+
+.form-group {
+    margin: 20px 0;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 15px;
+    border-left: 5px solid #667eea;
+}
+
+label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #333;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 3px solid #ddd;
+    border-radius: 10px;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+}
+
+.button-group {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 15px 0;
+}
+
+button {
+    padding: 12px 24px;
+    font-size: 15px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    background: #667eea;
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s;
+}
+
+button:hover {
+    background: #764ba2;
+    transform: translateY(-3px);
+}
+
+button.secondary {
+    background: #6c757d;
+}
+
+button.secondary:hover {
+    background: #5a6268;
+}
+
+.game-board {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 15px;
+    border-radius: 15px;
+    color: white;
+}
+
+.header h3 {
+    color: white;
+    margin: 0;
+}
+
+.current-player {
+    font-size: 18px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.2);
+    padding: 10px 18px;
+    border-radius: 20px;
+}
+
+.info-display {
+    background: linear-gradient(135deg, #fff3cd 0%, #fffbf0 100%);
+    border-left: 5px solid #ffc107;
+    padding: 15px;
+    border-radius: 12px;
+    margin: 10px 0;
+}
+
+.info-display h4 {
+    color: #ffc107;
+    margin-bottom: 12px;
+}
+
+.info-cards-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    min-height: 150px;
+}
+
+.card {
+    width: 85px;
+    height: 125px;
+    border: 3px solid #667eea;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    background: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    transition: all 0.3s;
+    cursor: default;
+}
+
+.card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 18px rgba(102, 126, 234, 0.35);
+}
+
+.card.selectable {
+    cursor: pointer;
+    background: #f0f0f0;
+}
+
+.card.selectable:hover {
+    background: #e0e0e0;
+}
+
+.card.selected {
+    background: #fff3cd;
+    border-color: #ffc107;
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+    transform: translateY(-10px) scale(1.05);
+}
+
+.card-value {
+    font-size: 18px;
+    margin-bottom: 3px;
+}
+
+.card-suit {
+    font-size: 28px;
+    margin: 5px 0;
+}
+
+.card-suit.red { color: #e74c3c; }
+.card-suit.black { color: #333; }
+
+.card-name { font-size: 10px; color: #666; }
+
+.player-hand {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px solid #667eea;
+}
+
+.hand-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.points-display {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #667eea;
+    margin: 10px 0;
+    padding: 12px;
+    background: white;
+    border-radius: 10px;
+    border: 2px solid #667eea;
+}
+
+.points-display.ready {
+    background: #d4edda;
+    color: #155724;
+    border-color: #28a745;
+}
+
+.action-section {
+    text-align: center;
+    padding: 12px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    margin: 10px 0;
+}
+
+.draw-section {
+    background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+    border-left: 5px solid #28a745;
+    padding: 15px;
+    border-radius: 12px;
+    margin: 10px 0;
+}
+
+.draw-section h4 { color: #28a745; margin-bottom: 12px; }
+
+.draw-cards-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+}
+
+.draw-card-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.draw-card-item button { width: 85px; padding: 8px; font-size: 12px; }
+
+.draw-pile-section { text-align:center; padding:15px; background:white; border-radius:8px; margin:12px 0; }
+.draw-pile-section button { width:100%; }
+
+.message {
+    padding: 12px;
+    border-radius: 10px;
+    margin: 10px 0;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95em;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn { from{opacity:0; transform:translateX(-20px);} to{opacity:1; transform:translateX(0);} }
+
+.message.info { background:#d1ecf1; color:#0c5460; border:2px solid #bee5eb; }
+
+.scores-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.scores-table th {
+    background: #667eea;
+    color: white;
+    padding: 12px;
+    text-align: left;
+}
+
+.scores-table td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+.winner {
+    text-align: center;
+    padding: 30px;
+    background: linear-gradient(135deg, #fff9e6 0%, #fffbf0 100%);
+    border: 4px solid #ffc107;
+    border-radius: 15px;
+    margin: 15px 0;
+}
+
+.winner h2 { color:#ffc107; font-size:36px; margin:10px 0; }
+
+@media (max-width:600px){
+    .card { width:75px; height:110px; }
+    .card-value { font-size:16px; }
+    .card-suit { font-size:24px; }
+}

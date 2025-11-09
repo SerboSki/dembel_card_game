@@ -1,0 +1,29 @@
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; padding:20px; color:#333; }
+.container { max-width:1200px; margin:0 auto; background:white; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.3); padding:25px; animation:fadeIn 0.5s ease-in; }
+@keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+
+h1,h2 { color:#667eea; margin-bottom:20px; text-align:center; font-size:2em; }
+h3 { color:#667eea; margin-bottom:12px; font-size:1.2em; }
+h4 { color:#667eea; margin-bottom:10px; font-size:0.95em; }
+
+.form-group { margin:20px 0; background:#f8f9fa; padding:15px; border-radius:15px; border-left:5px solid #667eea; }
+input[type="number"] { width:100%; padding:12px; font-size:16px; border:3px solid #ddd; border-radius:10px; }
+input[type="number"]:focus { outline:none; border-color:#667eea; box-shadow:0 0 10px rgba(102,126,234,0.3); }
+
+button { padding:12px 24px; font-size:15px; border:none; border-radius:10px; cursor:pointer; font-weight:600; background:#667eea; color:white; box-shadow:0 4px 15px rgba(102,126,234,0.4); transition:all 0.3s; }
+button:hover { background:#764ba2; transform:translateY(-3px); }
+button.secondary { background:#6c757d; }
+button.secondary:hover { background:#5a6268; }
+
+.hand-cards, .draw-cards-row { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:12px 0; }
+.card { width:85px; height:125px; border:3px solid #667eea; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; background:white; box-shadow:0 4px 12px rgba(102,126,234,0.2); transition:all 0.3s; cursor:default; }
+.card.selectable { cursor:pointer; background:#f0f0f0; }
+.card.selected { background:#fff3cd; border-color:#ffc107; box-shadow:0 0 15px rgba(255,193,7,0.5); transform:translateY(-10px) scale(1.05); }
+.card-value { font-size:18px; margin-bottom:3px; }
+.card-suit { font-size:28px; margin:5px 0; }
+.card-suit.red { color:#e74c3c; }
+.card-suit.black { color:#333; }
+.action-section { text-align:center; padding:12px; background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%); border-radius:10px; margin:10px 0; }
+.draw-section { background:linear-gradient(135deg,#e8f5e9 0%,#f1f8e9 100%); border-left:5px solid #28a745; padding:15px; border-radius:12px; margin:10px 0; }
+.draw-pile-section { text-align:center; padding:15px; background:white; border-radius:8px; margin:12px 0; }
