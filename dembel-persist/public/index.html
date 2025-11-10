@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Dembel</title>
+    <style>
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+    }
+    @keyframes slideDown {
+        from { transform: translate(-50%, -100%); opacity: 0; }
+        to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    @keyframes slideUp {
+        from { transform: translate(-50%, 0); opacity: 1; }
+        to { transform: translate(-50%, -100%); opacity: 0; }
+    }
+    body{font-family:sans-serif;background:#f8f9fa;margin:0;padding:0}
+    .container{max-width:600px;margin:30px auto;padding:20px;background:#fff;border-radius:12px;box-shadow:0 6px 15px rgba(0,0,0,0.1)}
+    h1,h3,h4{text-align:center;margin:10px 0}
+    .form-group{margin:15px 0;text-align:center}
+    input{width:200px;padding:10px;font-size:16px;border:2px solid #ddd;border-radius:8px;margin:10px 0}
+    button{padding:12px 20px;font-size:16px;border-radius:8px;border:none;cursor:pointer;margin:5px;background:#667eea;color:#fff;font-weight:bold;transition:all 0.2s}
+    button:hover:not(:disabled){opacity:0.9;transform:translateY(-2px)}
+    button:disabled{opacity:0.5;cursor:not-allowed}
+    button.selected{background:#28a745;animation:pulse 1s infinite}
+    .draw-cards-row,.hand-cards{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .card{width:70px;height:95px;border-radius:8px;background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);box-shadow:0 4px 8px rgba(0,0,0,0.2);display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:8px;cursor:pointer;border:2px solid transparent;transition:all 0.2s}
+    .card:hover{transform:translateY(-5px);box-shadow:0 8px 16px rgba(0,0,0,0.3)}
+    .card-value{font-weight:bold;font-size:18px}
+    .card-suit{font-size:20px}
+    .card.selected{background:#28a745;color:#fff;border:2px solid #28a745;transform:translateY(-10px)}
+    .action-section{margin-top:20px;text-align:center}
+    .message{background:#fff3cd;color:#856404;padding:10px;border-radius:8px;margin:10px 0;border-left:4px solid #ffc107}
+    .info-box{margin-top:20px;padding:15px;background:#e3f2fd;border-radius:8px;border-left:4px solid #2196f3;text-align:center}
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game-client.js"></script>
+</body>
+</html>
