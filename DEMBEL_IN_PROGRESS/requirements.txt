@@ -1,6 +1,0 @@
-# Dépendances
-
-- Python 3.6+
-- Navigateur web
-
-Aucune librairie externe!
