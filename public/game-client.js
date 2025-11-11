@@ -1,4 +1,3 @@
-
 class DembelGame {
     constructor() {
         this.valeurs = ["As","2","3","4","5","6","7","8","9","10","Valet","Dame","Roi"];
@@ -247,6 +246,25 @@ function callDembel() {
     showSuccessNotification('🎯 DEMBEL annonce avec '+pts+' points!');
 }
 
+function copyRoomCode() {
+    const roomCode = currentRoom;
+    navigator.clipboard.writeText(roomCode).then(() => {
+        const btn = document.getElementById('copy-room-btn');
+        if (btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✅ Copié!';
+            btn.style.background = '#2196F3';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Erreur:', err);
+        showErrorNotification('❌ Erreur copie');
+    });
+}
+
 function newGame() {
     sessionStorage.removeItem('dembel_username');
     sessionStorage.removeItem('dembel_roomId');
@@ -270,7 +288,7 @@ function renderWaiting() {
         const badge = (isHost && p === currentUser) ? ' 👑' : (p === currentUser ? ' 🎮' : '');
         return '<li>👤 <strong>' + p + '</strong>' + badge + '</li>';
     }).join('');
-    return '<div class="container"><h1>🎲 ' + currentRoom + '</h1><div style="text-align:center;padding:10px;background:' + statusColor + ';border-radius:8px;font-weight:bold">' + roomPlayers.length + '/' + MAX_PLAYERS + ' 🎮</div><div style="text-align:center;padding:8px;background:#f0f0f0;border-radius:8px;font-size:12px;margin:10px 0">Min '+MIN_PLAYERS+' joueurs - Max '+MAX_PLAYERS+' joueurs</div><h3>👥 Joueurs:</h3><ul style="list-style:none;text-align:center">' + playerList + '</ul><div style="text-align:center">' + (isHost ? '<button onclick="startGame()" ' + (!canStart ? 'disabled' : '') + ' style="background:#4caf50">▶️ Demarrer</button>' : '<p>⏳ En attente...</p>') + '</div></div>';
+    return '<div class="container"><h1>🎲 ' + currentRoom + ' <button id="copy-room-btn" onclick="copyRoomCode()" style="background:#2196F3;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:16px;margin-left:8px;transition:all 0.2s ease;font-weight:bold">📋 Copier</button></h1><div style="text-align:center;padding:10px;background:' + statusColor + ';border-radius:8px;font-weight:bold">' + roomPlayers.length + '/' + MAX_PLAYERS + ' 🎮</div><div style="text-align:center;padding:8px;background:#f0f0f0;border-radius:8px;font-size:12px;margin:10px 0">Min '+MIN_PLAYERS+' joueurs - Max '+MAX_PLAYERS+' joueurs</div><h3>👥 Joueurs:</h3><ul style="list-style:none;text-align:center">' + playerList + '</ul><div style="text-align:center">' + (isHost ? '<button onclick="startGame()" ' + (!canStart ? 'disabled' : '') + ' style="background:#4caf50">▶️ Demarrer</button>' : '<p>⏳ En attente...</p>') + '</div></div>';
 }
 
 function renderGameBoard() {
