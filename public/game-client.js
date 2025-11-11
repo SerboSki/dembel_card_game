@@ -28,6 +28,8 @@ class DembelGame {
 const socket = io();
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
+const MIN_AI_COUNT = 1;
+const MAX_AI_COUNT = 4;
 
 let currentUser = null;
 let currentRoom = null;
@@ -41,6 +43,8 @@ let previousTurn = -1;
 let isProcessing = false;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
+let soloMode = false;
+let soloNbAI = 0;
 
 function attemptReconnect() {
     const savedUser = sessionStorage.getItem('dembel_username');
@@ -124,7 +128,19 @@ socket.on('room_created', (data) => {
     sessionStorage.setItem('dembel_roomId', data.roomId);
     roomPlayers = [{ username: currentUser, isHost: true }];
     isHost = true;
+    soloMode = false;
     console.log('✅ Salle creee:', currentRoom);
+    render();
+});
+
+socket.on('solo_room_created', (data) => {
+    reconnectAttempts = 0;
+    currentRoom = data.roomId;
+    sessionStorage.setItem('dembel_roomId', data.roomId);
+    soloMode = true;
+    soloNbAI = data.nbAI;
+    isHost = true;
+    console.log('✅ Partie solo creee contre', soloNbAI, 'bot');
     render();
 });
 
@@ -132,7 +148,6 @@ socket.on('player_joined', (data) => {
     reconnectAttempts = 0;
     if (data.players) {
         roomPlayers = data.players;
-        // Déterminer si je suis hôte
         const myPlayer = roomPlayers.find(p => p.username === currentUser);
         isHost = myPlayer ? myPlayer.isHost : false;
     }
@@ -194,6 +209,7 @@ socket.on('room_closed', () => {
     sessionStorage.removeItem('dembel_roomId');
     currentRoom = null;
     game = null;
+    soloMode = false;
     render();
 });
 
@@ -245,6 +261,24 @@ function registerUser() {
 
 function createRoom() { socket.emit('create_room'); }
 
+function createSoloRoom() {
+    soloMode = true;
+    render();
+}
+
+function backFromSolo() {
+    soloMode = false;
+    render();
+}
+
+function startSoloGame(nbAI) {
+    if (nbAI < MIN_AI_COUNT || nbAI > MAX_AI_COUNT) {
+        showErrorNotification('❌ Nombre bot invalide');
+        return;
+    }
+    socket.emit('create_solo_room', { nbAI: nbAI });
+}
+
 function joinRoom() {
     const roomId = document.getElementById('room_id_input')?.value?.trim()?.toUpperCase();
     if (!roomId) {
@@ -270,6 +304,7 @@ function leaveRoom() {
     sessionStorage.removeItem('dembel_roomId');
     currentRoom = null;
     game = null;
+    soloMode = false;
     render();
 }
 
@@ -364,7 +399,22 @@ function renderLogin() {
 
 function renderLobby() {
     let html = '<div class="container"><h1>🃏 Dembel</h1><h3>👋 Bienvenue ' + currentUser + '</h3>';
-    html += '<div class="form-group"><h4>👥 Multijoueur</h4><button onclick="createRoom()" style="background:#2196F3">➕ Creer</button></div><div class="form-group"><input type="text" id="room_id_input" placeholder="Code" maxlength="6" style="text-transform:uppercase" /><button onclick="joinRoom()" style="background:#FF9800">🔗 Rejoindre</button></div></div>';
+    html += '<div class="form-group"><h4>👥 Multijoueur</h4><button onclick="createRoom()" style="background:#2196F3">➕ Creer</button></div>';
+    html += '<div class="form-group"><input type="text" id="room_id_input" placeholder="Code" maxlength="6" style="text-transform:uppercase" /><button onclick="joinRoom()" style="background:#FF9800">🔗 Rejoindre</button></div>';
+    html += '<div class="form-group"><h4>👤 Solo</h4><button onclick="createSoloRoom()" style="background:#9C27B0">🤖 Affronter un bot</button></div>';
+    html += '</div>';
+    return html;
+}
+
+function renderSoloSelection() {
+    let html = '<div class="container"><h1>🃏 Dembel - Solo</h1><h3>Combien de bots voulez-vous affronter?</h3>';
+    html += '<div style="text-align:center;margin:20px 0">';
+    for (let i = MIN_AI_COUNT; i <= MAX_AI_COUNT; i++) {
+        html += '<button onclick="startSoloGame(' + i + ')" style="background:#9C27B0;color:white;padding:15px 30px;margin:10px;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer">🤖 ' + i + ' Bot</button>';
+    }
+    html += '</div>';
+    html += '<div style="text-align:center;margin-top:20px"><button onclick="backFromSolo()" style="background:#ff6b6b;color:white;padding:10px 20px;border:none;border-radius:4px;font-size:14px;cursor:pointer">← Retour</button></div>';
+    html += '</div>';
     return html;
 }
 
@@ -475,6 +525,8 @@ function render() {
     const app=document.getElementById("app");
     if (!currentUser) {
         app.innerHTML=renderLogin();
+    } else if (!currentRoom && soloMode) {
+        app.innerHTML=renderSoloSelection();
     } else if (!currentRoom) {
         app.innerHTML=renderLobby();
     } else if (!game) {

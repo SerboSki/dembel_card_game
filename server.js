@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -12,17 +11,15 @@ const io = new Server(server, {
     }
 });
 
-
 app.use(express.static('public'));
-
 
 const users = new Map();
 const rooms = new Map();
 
-
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
-
+const MIN_AI_COUNT = 1;
+const MAX_AI_COUNT = 4;
 
 class DembelGame {
     constructor() {
@@ -43,8 +40,6 @@ class DembelGame {
         this.annonceur_dembel = null;
     }
 
-
-    // --- utilitaires ---
     melanger(tableau){
         for(let i=tableau.length-1;i>0;i--){
             const j = Math.floor(Math.random()*(i+1));
@@ -53,15 +48,10 @@ class DembelGame {
         return tableau;
     }
 
-
-    // crée un id unique pour chaque carte (stable pour la partie)
     _makeCardId(couleur, valeur, idx){
-        // forme: COULEUR_VALEUR_index
         return `${couleur}_${valeur}_${idx}`;
     }
 
-
-    // crée le paquet (avec id unique)
     creerPaquet() {
         const paquet = [];
         let idx = 0;
@@ -74,105 +64,67 @@ class DembelGame {
         return this.melanger(paquet);
     }
 
-
-    // compare cartes par id si possible, sinon par valeur+couleur
-    _cardEqual(a, b){
-        if(!a || !b) return false;
-        if(a.id !== undefined && b.id !== undefined) return a.id === b.id;
-        return a.valeur === b.valeur && a.couleur === b.couleur;
-    }
-
-
-    // retourne true si la carte (par id) existe dans un tableau
     _findIndexByCardId(arr, card){
         if(!Array.isArray(arr) || !card) return -1;
         if(card.id !== undefined){
             return arr.findIndex(c => c && c.id === card.id);
         }
-        // fallback : value + couleur
         return arr.findIndex(c => c && c.valeur === card.valeur && c.couleur === card.couleur);
     }
-
 
     calculPoints(main){
         return main.reduce((sum, carte)=>sum+this.points_valeur[carte.valeur],0);
     }
 
-
-    // Méthode défensive de recyclage de la pioche
     _recyclerPioche(){
-        // On reconstruit la pioche à partir de old_defausse,
-        // mais on exclut toute carte qui se trouve déjà dans :
-        // - les mains des joueurs
-        // - la last_defausse (top visible)
         if(!this.old_defausse || this.old_defausse.length === 0) {
-            // rien à recycler
             return;
         }
 
-
-        // Construire set d'ids présents dans les mains des joueurs
         const presentIds = new Set();
         for(const p of this.joueurs){
             if(Array.isArray(p.main)){
                 for(const c of p.main){
                     if(c && c.id) presentIds.add(c.id);
-                    else if(c) presentIds.add(`${c.couleur}_${c.valeur}`); // fallback
+                    else if(c) presentIds.add(`${c.couleur}_${c.valeur}`);
                 }
             }
         }
-        // ajouter la carte(s) de last_defausse dans presentIds pour ne pas les remettre en pioche
         for(const c of this.last_defausse || []){
             if(c && c.id) presentIds.add(c.id);
             else if(c) presentIds.add(`${c.couleur}_${c.valeur}`);
         }
 
-
-        // Construire candidats à remettre dans la pioche (exclure présents)
         const candidates = [];
         for(const c of this.old_defausse){
             if(!c) continue;
             const idKey = c.id ? c.id : `${c.couleur}_${c.valeur}`;
             if(!presentIds.has(idKey)){
                 candidates.push(c);
-            } else {
-                // Si la carte est déjà dans une main ou dans last_defausse, on l'ignore lors du recyclage.
             }
         }
 
-
-        // On vide old_defausse (on va reconstruire la pioche à partir des candidats)
         this.old_defausse = [];
 
-
         if(candidates.length === 0){
-            // Rien à remettre dans la pioche : on laisse pioche vide (rare)
             this.pioche = [];
             return;
         }
 
-
         this.pioche = this.melanger(candidates);
-        // last_defausse reste inchangé (on ne le met PAS dans la pioche)
     }
 
-
     piocher(){
-        // Si pioche vide : tenter recycle
         if((!this.pioche || this.pioche.length===0) && this.old_defausse && this.old_defausse.length >= 1){
             this._recyclerPioche();
         }
-
 
         if(!this.pioche || this.pioche.length===0) {
             return null;
         }
 
-
-        // On utilise shift pour garder le comportement initial (début du tableau)
         return this.pioche.shift();
     }
-
 
     valideDefausse(indices, main){
         if(indices.length===0) return false;
@@ -196,7 +148,6 @@ class DembelGame {
         return false;
     }
 
-
     initialiserManche(){
         this.pioche = this.creerPaquet();
         this.last_defausse = [];
@@ -212,10 +163,8 @@ class DembelGame {
         if(premiere_carte) this.last_defausse = [premiere_carte];
     }
 
-
     addMessage(msg){ this.messages.push(msg); }
     clearMessages(){ this.messages=[]; }
-
 
     tourJoueur(indices){
         const joueur = this.joueurs[this.tour_actuel];
@@ -230,20 +179,14 @@ class DembelGame {
             joueur.main.splice(i,1);
         }
 
-
         if(cartes_defaussees.length>0) {
-            // On ajoute les cartes précédemment sur la table dans old_defausse
-            // (les cartes visibles sur table = this.last_defausse)
             if(this.last_defausse && this.last_defausse.length>0){
-                // push copies/references : on veut conserver l'objet carte
                 this.old_defausse.push(...this.last_defausse);
             }
-            // puis on remplace last_defausse par les nouvelles cartes déposées
             this.last_defausse = cartes_defaussees;
         }
         return true;
     }
-
 
     piocherCarte(carte){
         const joueur = this.joueurs[this.tour_actuel];
@@ -251,29 +194,18 @@ class DembelGame {
             const c = this.piocher();
             if(c) joueur.main.push(c);
         } else if(carte && carte.valeur){
-            // Le client a choisi de prendre une carte depuis la défausse (last_defausse)
-            // il nous envoie probablement un objet carte (mais pas forcément la même référence)
-            // On recherche la carte dans last_defausse par id / valeur+couleur, et on la retire.
             const idx = this._findIndexByCardId(this.last_defausse, carte);
             if(idx!==-1){
                 const taken = this.last_defausse.splice(idx,1)[0];
-                // on ajoute la carte prise à la main du joueur
                 joueur.main.push(taken);
             } else {
-                // Par sécurité, si idx introuvable (références divergentes), on tente de chercher dans old_defausse
                 const idxOld = this._findIndexByCardId(this.old_defausse, carte);
                 if(idxOld!==-1){
                     const taken = this.old_defausse.splice(idxOld,1)[0];
                     joueur.main.push(taken);
-                } else {
-                    // Si on ne trouve pas, on n'ajoute rien mais on log si debug
-                    if(process.env.DEBUG_CARD_COUNT === "1") {
-                        console.warn('Warning: carte demandee par client introuvable dans last_defausse/old_defausse', carte);
-                    }
                 }
             }
         }
-        // passer au joueur suivant si il y a des joueurs
         if(this.joueurs && this.joueurs.length > 0) {
             this.tour_actuel=(this.tour_actuel+1)%this.joueurs.length;
         } else {
@@ -281,59 +213,85 @@ class DembelGame {
         }
     }
 
-
-    canCallDembel(){
-        const joueur=this.joueurs[this.tour_actuel];
+    canCallDembel(playerIdx){
+        const joueur=this.joueurs[playerIdx];
         return this.calculPoints(joueur.main)<=10;
     }
 
-
-    dembel(){
-        if(!this.canCallDembel()) return false;
-        this.annonceur_dembel = this.tour_actuel;
+    dembel(playerIdx){
+        if(!this.canCallDembel(playerIdx)) return false;
+        this.annonceur_dembel = playerIdx;
+        console.log('🎯 DEMBEL annonce par index:', playerIdx, '=', this.joueurs[playerIdx].nom);
         return true;
     }
 
-
     finManche(){
         const scores = {};
-        const annonceur_nom = this.annonceur_dembel !== null ? this.joueurs[this.annonceur_dembel].nom : null;
+
+        // Calculer les points de base pour tous les joueurs
         for(let j of this.joueurs) {
             scores[j.nom] = {
                 points: this.calculPoints(j.main),
-                dembel: j.nom === annonceur_nom
+                dembel: false
             };
         }
-        if(this.annonceur_dembel!==null){
-            const idx=this.annonceur_dembel;
-            const score_annonceur=scores[this.joueurs[idx].nom].points;
-            const minScore = Math.min(...Object.values(scores).map(s=>s.points));
-            if(score_annonceur===minScore){
-                scores[this.joueurs[idx].nom].points=0;
-            } else {
-                scores[this.joueurs[idx].nom].points=score_annonceur*2;
+
+        console.log('📊 Points de base:', JSON.stringify(scores, null, 2));
+
+        // OPTION B AVEC RANDOM:
+        // - Trouver le score minimum
+        // - Choisir UN JOUEUR AU HASARD parmi ceux avec le score min
+        // - Ce joueur obtient 0 points
+        // - Les autres avec le même score gardent leurs points
+        // - L'annonceur qui perd → points doublés
+
+        let minScore = Math.min(...Object.values(scores).map(s => s.points));
+        console.log('📊 Score minimum:', minScore);
+
+        // Trouver TOUS les joueurs avec le score minimum
+        const joueursMin = [];
+        for(let i = 0; i < this.joueurs.length; i++){
+            if(scores[this.joueurs[i].nom].points === minScore){
+                joueursMin.push(i);
             }
         }
+
+        console.log('📊 Joueurs avec score minimum:', joueursMin.map(i => this.joueurs[i].nom));
+
+        // Choisir UN AU HASARD parmi les gagnants
+        const gagnantIdx = joueursMin[Math.floor(Math.random() * joueursMin.length)];
+        console.log('🏆 GAGNANT (tiré au sort) - 0 pts:', this.joueurs[gagnantIdx].nom);
+
+        // Appliquer les règles
+        for(let i = 0; i < this.joueurs.length; i++){
+            const joueur = this.joueurs[i];
+
+            if(i === gagnantIdx){
+                // Le gagnant aléatoire obtient 0 points
+                scores[joueur.nom].points = 0;
+                scores[joueur.nom].dembel = (i === this.annonceur_dembel);
+                console.log('✅', joueur.nom, '-> 0 points (GAGNANT TIRÉ AU SORT)');
+            } else if(i === this.annonceur_dembel){
+                // L'annonceur qui perd a les points doublés
+                const scoreAnnonceur = scores[joueur.nom].points;
+                scores[joueur.nom].points = scoreAnnonceur * 2;
+                scores[joueur.nom].dembel = true;
+                console.log('❌', joueur.nom, '-> points doublés:', scoreAnnonceur * 2, '(DEMBEL PERDU)');
+            }
+            // Les autres gardent leurs points normaux
+        }
+
+        console.log('📊 Scores FINAUX:', JSON.stringify(scores, null, 2));
+
+        this.annonceur_dembel = null;
         this.manche_actuelle++;
-        this.annonceur_dembel=null;
+
         return scores;
-    }
-
-
-    // Helper debug : compter toutes les cartes (pioche + old_defausse + last_defausse + mains)
-    _countAllCards(){
-        const inPlayers = (this.joueurs || []).reduce((acc, p) => acc + (p.main ? p.main.length : 0), 0);
-        const piocheCount = this.pioche ? this.pioche.length : 0;
-        const oldDefCount = this.old_defausse ? this.old_defausse.length : 0;
-        const lastDefCount = this.last_defausse ? this.last_defausse.length : 0;
-        return { total: inPlayers + piocheCount + oldDefCount + lastDefCount, breakdown: {inPlayers, piocheCount, oldDefCount, lastDefCount} };
     }
 }
 
-
 io.on('connection', (socket) => {
     console.log('✅ Connexion:', socket.id);
-
 
     socket.on('register_user', (username) => {
         username = username.trim();
@@ -351,7 +309,6 @@ io.on('connection', (socket) => {
         socket.emit('registration_success', { username });
     });
 
-
     socket.on('create_room', () => {
         if (!socket.username) return;
         const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -360,7 +317,8 @@ io.on('connection', (socket) => {
             hostId: socket.id,
             players: [{ socketId: socket.id, username: socket.username, isHost: true }],
             gameState: null,
-            isGameStarted: false
+            isGameStarted: false,
+            isSolo: false
         };
         rooms.set(roomId, room);
         socket.join(roomId);
@@ -369,6 +327,36 @@ io.on('connection', (socket) => {
         socket.emit('room_created', { roomId });
     });
 
+    socket.on('create_solo_room', (data) => {
+        if (!socket.username) return;
+        const nbAI = data.nbAI;
+        console.log('🤖 Demande solo avec', nbAI, 'bot(s)');
+        if (nbAI < MIN_AI_COUNT || nbAI > MAX_AI_COUNT) {
+            socket.emit('error_notification', '❌ Nombre bot invalide');
+            return;
+        }
+        const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const players = [{ socketId: socket.id, username: socket.username, isHost: true }];
+        const botNames = ['🤖 Bot-Alpha', '🤖 Bot-Beta', '🤖 Bot-Gamma', '🤖 Bot-Delta'];
+        for (let i = 0; i < nbAI; i++) {
+            players.push({ socketId: 'bot-' + i, username: botNames[i], isHost: false, isAI: true });
+        }
+        const room = {
+            id: roomId,
+            hostId: socket.id,
+            players: players,
+            gameState: null,
+            isGameStarted: false,
+            isSolo: true,
+            nbAI: nbAI
+        };
+        rooms.set(roomId, room);
+        socket.join(roomId);
+        users.get(socket.username).currentRoom = roomId;
+        console.log('✅ Partie solo creee:', roomId, 'contre', nbAI, 'bot(s)');
+        socket.emit('player_joined', { username: socket.username, players: players });
+        socket.emit('solo_room_created', { roomId: roomId, nbAI: nbAI });
+    });
 
     socket.on('join_room', (roomId) => {
         if (!socket.username) return;
@@ -392,8 +380,6 @@ io.on('connection', (socket) => {
         io.to(roomId).emit('player_joined', { username: socket.username, players: room.players });
     });
 
-
-    // RECONNEXION
     socket.on('reconnect_to_game', (data) => {
         const { username, roomId } = data;
         console.log('🔄 Tentative reconnexion:', username, 'roomId:', roomId);
@@ -411,7 +397,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Vérifier si le joueur était dans cette salle
         const playerInRoom = room.players.find(p => p.username === username);
         if (!playerInRoom) {
             console.log('❌ Joueur', username, 'non trouve dans la salle', roomId);
@@ -419,11 +404,9 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Mettre à jour le socketId du joueur
         playerInRoom.socketId = socket.id;
         socket.username = username;
 
-        // Mettre à jour la map users
         if (users.has(username)) {
             users.get(username).socketId = socket.id;
             users.get(username).currentRoom = roomId;
@@ -436,7 +419,6 @@ io.on('connection', (socket) => {
         console.log('✅ Reconnexion reussie:', username, 'vers salle', roomId);
 
         if (room.isGameStarted) {
-            // PARTIE EN COURS : Envoyer l'état du jeu
             console.log('📊 Renvoi de letat du jeu');
             const game = room.gameState;
             socket.emit('game_started', {
@@ -456,7 +438,6 @@ io.on('connection', (socket) => {
                 }
             });
         } else {
-            // SALLE D'ATTENTE : Envoyer la mise à jour du lobby
             console.log('👥 Renvoi de letat du lobby');
             socket.emit('player_joined', { 
                 username: username, 
@@ -465,30 +446,29 @@ io.on('connection', (socket) => {
         }
     });
 
-
     socket.on('start_game', () => {
         if (!socket.username) return;
         const userInfo = users.get(socket.username);
         if (!userInfo || !userInfo.currentRoom) return;
         const room = rooms.get(userInfo.currentRoom);
         if (!room || room.hostId !== socket.id) return;
-        if (room.players.length < MIN_PLAYERS || room.players.length > MAX_PLAYERS) {
-            socket.emit('error_notification', '❌ Min '+MIN_PLAYERS+' joueurs, max '+MAX_PLAYERS);
+
+        const minRequired = room.isSolo ? 1 : MIN_PLAYERS;
+        if (room.players.length < minRequired) {
+            socket.emit('error_notification', '❌ Min '+minRequired+' joueurs');
             return;
         }
+
         room.isGameStarted = true;
         const game = new DembelGame();
         for (let player of room.players) {
-            game.joueurs.push({ nom: player.username, main: [] });
+            game.joueurs.push({ nom: player.username, main: [], isAI: player.isAI || false });
         }
         game.initialiserManche();
         room.gameState = game;
 
         console.log('🎮 Partie lancee dans la salle', room.id);
 
-        if(process.env.DEBUG_CARD_COUNT === "1"){
-            console.log('DEBUG card counts after init:', game._countAllCards());
-        }
         io.to(room.id).emit('game_started', {
             gameState: {
                 joueurs: game.joueurs,
@@ -505,8 +485,11 @@ io.on('connection', (socket) => {
                 couleurs: game.couleurs
             }
         });
-    });
 
+        if (room.isSolo && game.joueurs[game.tour_actuel].isAI) {
+            scheduleAITurn(room, io);
+        }
+    });
 
     socket.on('game_action', (action) => {
         if (!socket.username) return;
@@ -535,10 +518,6 @@ io.on('connection', (socket) => {
             }
             game.clearMessages();
 
-            if(process.env.DEBUG_CARD_COUNT === "1"){
-                console.log('DEBUG card counts after turn:', game._countAllCards());
-            }
-
             io.to(room.id).emit('game_update', {
                 gameState: {
                     joueurs: game.joueurs,
@@ -550,19 +529,22 @@ io.on('connection', (socket) => {
                     annonceur_dembel: game.annonceur_dembel
                 }
             });
+
+            if (room.isSolo && game.joueurs[game.tour_actuel].isAI) {
+                scheduleAITurn(room, io);
+            }
         } else if (action.type === 'dembel') {
-            if (!game.canCallDembel()) {
+            const playerIdx = game.joueurs.findIndex(j => j.nom === socket.username);
+            if (!game.canCallDembel(playerIdx)) {
                 socket.emit('error_notification', '❌ DEMBEL impossible: points > 10');
                 return;
             }
-            game.dembel();
+            game.dembel(playerIdx);
             const scores = game.finManche();
             io.to(room.id).emit('game_ended', { scores });
         }
     });
 
-
-    // Quitter la salle/partie
     socket.on('leave_room', () => {
         if (!socket.username) return;
 
@@ -575,29 +557,21 @@ io.on('connection', (socket) => {
 
         console.log('👋 Joueur', socket.username, 'quitte la salle', roomId);
 
-        // Retirer le joueur de la liste
         room.players = room.players.filter(p => p.socketId !== socket.id);
 
         if (room.isGameStarted) {
-            // PARTIE EN COURS : Supprimer la salle et notifier les autres
             console.log('❌ Partie en cours - Salle supprimee');
-
             io.to(roomId).emit('error_notification', '❌ ' + socket.username + ' a quitte la partie. Salle fermee.');
             io.to(roomId).emit('room_closed');
-
             rooms.delete(roomId);
         } else {
-            // SALLE D'ATTENTE : Mettre à jour et notifier
             console.log('⭕ Salle dattente - Mise a jour');
 
             if (room.players.length === 0) {
-                // Si plus personne : supprimer la salle
                 console.log('🗑️ Salle', roomId, 'supprimee (vide)');
                 rooms.delete(roomId);
             } else {
-                // Si quelqu'un reste : envoyer mise à jour
                 if (room.hostId === socket.id && room.players.length > 0) {
-                    // Si l'hôte s'en va, passer l'hôte au premier joueur
                     const newHost = room.players[0];
                     room.hostId = newHost.socketId;
                     newHost.isHost = true;
@@ -614,7 +588,6 @@ io.on('connection', (socket) => {
         userInfo.currentRoom = null;
         socket.leave(roomId);
     });
-
 
     socket.on('disconnect', () => {
         if (!socket.username) return;
@@ -634,29 +607,21 @@ io.on('connection', (socket) => {
 
         console.log('❌ Deconnexion:', socket.username, 'de la salle', roomId);
 
-        // Retirer le joueur de la liste
         room.players = room.players.filter(p => p.socketId !== socket.id);
 
         if (room.isGameStarted) {
-            // PARTIE EN COURS : Supprimer la salle et notifier les autres
             console.log('❌ Joueur deconnecte en plein jeu - Salle supprimee');
-
             io.to(roomId).emit('error_notification', '❌ ' + socket.username + ' a quitte la partie. Salle fermee.');
             io.to(roomId).emit('room_closed');
-
             rooms.delete(roomId);
         } else {
-            // SALLE D'ATTENTE : Mettre à jour et notifier
             console.log('⭕ Joueur deconnecte en salle dattente');
 
             if (room.players.length === 0) {
-                // Si plus personne : supprimer la salle
                 console.log('🗑️ Salle', roomId, 'supprimee (vide)');
                 rooms.delete(roomId);
             } else {
-                // Si quelqu'un reste : envoyer mise à jour
                 if (room.hostId === socket.id && room.players.length > 0) {
-                    // Si l'hôte s'en va, passer l'hôte au premier joueur
                     const newHost = room.players[0];
                     room.hostId = newHost.socketId;
                     newHost.isHost = true;
@@ -674,6 +639,132 @@ io.on('connection', (socket) => {
     });
 });
 
+function sendGameState(room, io) {
+    const game = room.gameState;
+    if (!game) return;
+
+    io.to(room.id).emit('game_update', {
+        gameState: {
+            joueurs: game.joueurs,
+            pioche: game.pioche,
+            last_defausse: game.last_defausse,
+            tour_actuel: game.tour_actuel,
+            manche_actuelle: game.manche_actuelle,
+            messages: game.messages,
+            annonceur_dembel: game.annonceur_dembel
+        }
+    });
+}
+
+function findBestMove(game) {
+    const joueur = game.joueurs[game.tour_actuel];
+    const main = joueur.main;
+
+    if (!main || main.length === 0) return null;
+
+    const valeurs = {};
+    for (let i = 0; i < main.length; i++) {
+        const v = main[i].valeur;
+        if (!valeurs[v]) valeurs[v] = [];
+        valeurs[v].push(i);
+    }
+
+    for (let v in valeurs) {
+        if (valeurs[v].length >= 2) {
+            return valeurs[v];
+        }
+    }
+
+    const couleurs = {};
+    for (let i = 0; i < main.length; i++) {
+        const c = main[i].couleur;
+        if (!couleurs[c]) couleurs[c] = [];
+        couleurs[c].push(i);
+    }
+
+    for (let c in couleurs) {
+        if (couleurs[c].length >= 3) {
+            const indices = couleurs[c];
+            const valeurs_ordre = game.valeurs;
+            const vals = indices.map(i => valeurs_ordre.indexOf(main[i].valeur)).sort((a,b)=>a-b);
+
+            let suite = [vals[0]];
+            for (let i = 1; i < vals.length; i++) {
+                if (vals[i] - vals[i-1] === 1) {
+                    suite.push(vals[i]);
+                } else {
+                    break;
+                }
+            }
+
+            if (suite.length >= 3) {
+                return indices.slice(0, suite.length);
+            }
+        }
+    }
+
+    let cartesCheres = [];
+    for (let i = 0; i < main.length; i++) {
+        const pts = game.points_valeur[main[i].valeur];
+        if (pts >= 10) {
+            cartesCheres.push(i);
+        }
+    }
+
+    if (cartesCheres.length > 0) {
+        return [cartesCheres[0]];
+    }
+
+    return [Math.floor(Math.random() * main.length)];
+}
+
+function scheduleAITurn(room, io) {
+    setTimeout(() => {
+        const game = room.gameState;
+        if (!game || game.joueurs.length === 0) return;
+
+        const joueur = game.joueurs[game.tour_actuel];
+        if (!joueur || !joueur.isAI) return;
+
+        console.log('🤖 Tour de', joueur.nom, '- Cartes:', joueur.main.length);
+
+        if (!joueur.main || joueur.main.length === 0) {
+            game.tour_actuel = (game.tour_actuel + 1) % game.joueurs.length;
+            sendGameState(room, io);
+            if (room.isSolo && game.joueurs[game.tour_actuel].isAI) {
+                scheduleAITurn(room, io);
+            }
+            return;
+        }
+
+        const indiceDefausse = findBestMove(game);
+        if (!indiceDefausse) {
+            console.log('❌ Pas de coup possible pour', joueur.nom);
+            return;
+        }
+
+        console.log('🤖', joueur.nom, 'defausse', indiceDefausse.length, 'carte(s)');
+        const playerIdx = game.tour_actuel;
+        game.tourJoueur(indiceDefausse);
+        game.piocherCarte('pioche');
+
+        const pointsBot = game.calculPoints(joueur.main);
+        if (pointsBot <= 10) {
+            console.log('🎯', joueur.nom, 'annonce DEMBEL avec', pointsBot, 'points!');
+            game.dembel(playerIdx);
+            const scores = game.finManche();
+            console.log('📊 Scores finaux avec DEMBEL');
+            io.to(room.id).emit('game_ended', { scores });
+            return;
+        }
+
+        sendGameState(room, io);
+
+        if (room.isSolo && game.joueurs[game.tour_actuel].isAI) {
+            scheduleAITurn(room, io);
+        }
+    }, 1500);
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
