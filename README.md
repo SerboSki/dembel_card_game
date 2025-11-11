@@ -1,152 +1,316 @@
-# 🃏 JEU DU Dembel - Package Complet
+# 🃏 DEMBEL - Jeu de Cartes Multijoueur
 
-Bienvenue! Vous avez téléchargé le jeu Dembel avec tous les scripts de lancement.
+[![GitHub](https://img.shields.io/badge/GitHub-Dembel-blue?logo=github)](https://github.com)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green?logo=node.js)](https://nodejs.org)
+[![Socket.io](https://img.shields.io/badge/Socket.io-4.6+-red?logo=socket.io)](https://socket.io)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-## 🚀 DÉMARRAGE RAPIDE
-
-### Pour Windows 🪟
-1. **Double-cliquez sur `lancer_Dembel.bat`**
-2. Le jeu s'ouvre automatiquement dans votre navigateur
-3. C'est tout! 🎮
-
-### Pour macOS 🍎
-1. Ouvrez un terminal dans ce dossier
-2. Tapez:
-```bash
-chmod +x lancer_Dembel.sh
-./lancer_Dembel.sh
-```
-
-### Pour Linux 🐧
-1. Ouvrez un terminal dans ce dossier
-2. Tapez:
-```bash
-chmod +x lancer_Dembel.sh
-./lancer_Dembel.sh
-```
-
-### Avec Python (tous les OS) 🐍
-1. Ouvrez un terminal dans ce dossier
-2. Tapez:
-```bash
-python lancer_Dembel.py
-# ou
-python3 lancer_Dembel.py
-```
-
-## 📦 Contenu du dossier
-
-```
-📦 Dembel-complet/
-├── 🎮 Fichiers du jeu:
-│   ├── index.html         - Page principale
-│   ├── style.css          - Design
-│   └── game.js            - Logique du jeu
-│
-├── 🚀 Scripts de lancement:
-│   ├── lancer_Dembel.bat  - Windows (le plus simple)
-│   ├── lancer_Dembel.ps1  - Windows (PowerShell)
-│   ├── lancer_Dembel.sh   - macOS/Linux
-│   └── lancer_Dembel.py   - Python (tous les OS)
-│
-└── 📄 Documentation:
-    ├── README.md          - Ce fichier
-    ├── REGLES.md          - Règles du jeu
-    └── requirements.txt   - Dépendances (aucune!)
-```
-
-## 💻 Prérequis
-
-✅ **Python 3.x** (pour lancer le serveur)  
-✅ **Un navigateur web moderne** (Chrome, Firefox, Safari, Edge...)  
-
-**C'est tout!** Aucune autre dépendance.
-
-## 📋 Règles du jeu
-
-### Objectif
-Être le premier à crier "Dembel" avec 10 points ou moins!
-
-### Points par carte
-- As = 1 point
-- 2-10 = valeur nominale
-- Valet, Dame, Roi = 10 points
-
-### Défausses valides
-1. **1 carte** → toujours valide
-2. **2-4 cartes de même valeur** → valide (ex: deux 7, trois Rois)
-3. **Exactement 3 cartes consécutives même couleur** → valide (ex: 5-6-7 ♥)
-
-### Modes de jeu
-- **Rapide** → Une seule manche, gagnant = moins de points
-- **Complet** → Plusieurs manches avec score cumulatif (première à 100+ perd)
-
-## 🔧 Installation de Python (si nécessaire)
-
-### Windows
-1. Allez sur https://www.python.org
-2. Cliquez sur "Download"
-3. Exécutez l'installateur
-4. ⚠️ **IMPORTANT:** Cochez "Add Python to PATH"
-5. Terminez l'installation
-
-### macOS
-```bash
-brew install python3
-```
-
-### Linux (Ubuntu/Debian)
-```bash
-sudo apt-get install python3
-```
-
-## 🛠️ Dépannage
-
-### "Python n'a pas été trouvé"
-→ Installez Python 3 depuis https://www.python.org
-
-### "Port 8000 déjà utilisé"
-→ Modifiez le PORT dans le script (changez 8000 en 8001)
-
-### Le navigateur ne s'ouvre pas
-→ Ouvrez manuellement http://localhost:8000
-
-### "Accès refusé" (macOS/Linux)
-→ Tapez: `chmod +x lancer_Dembel.sh` avant de lancer
-
-## 🎮 Comment jouer
-
-1. Lancez un script
-2. Configurez le nombre de joueurs (humains + IA)
-3. Choisissez un mode (Rapide ou Complet)
-4. Cliquez "Commencer"
-5. Sélectionnez des cartes à défausser
-6. Cliquez "Défausser"
-7. Pichez une carte
-8. Quand vous avez ≤10 points, cliquez "Dembel!"
-
-## 📞 Support
-
-Si vous avez des problèmes:
-1. Vérifiez que Python 3.x est installé
-2. Vérifiez que le port 8000 est libre
-3. Essayez un autre port (changez dans le script)
-4. Essayez un navigateur différent
-
-## ✨ Caractéristiques
-
-✅ Jeu Dembel complet  
-✅ Multijoueur (2-5 joueurs)  
-✅ Joueurs IA intelligents  
-✅ Mode Rapide et Complet  
-✅ Interface moderne et responsive  
-✅ Aucune installation complexe  
-✅ Fonctionne sur Windows/macOS/Linux  
-
-## 📝 Licence
-
-Libre d'utilisation et de modification.
+**DEMBEL** est un jeu de cartes stratégique multijoueur en ligne. Défiez vos amis en temps réel pour avoir le **moins de points possible**!
 
 ---
 
-**Bon jeu!** 🎲🃏
+## 🎮 Démo
+
+🌐 **Jouer en ligne:** [dembel.com](https://dembel-game.com)
+
+*(Note: Remplacez avec votre URL de déploiement)*
+
+---
+
+## 🎯 Caractéristiques
+
+✅ **Multijoueur en temps réel** - Jusqu'à 5 joueurs par partie  
+✅ **WebSocket** - Communication instantanée avec Socket.io  
+✅ **Interface moderne** - Responsive et intuitive  
+✅ **Règles simples mais stratégiques** - Facile à apprendre, difficile à maîtriser  
+✅ **Notifications in-game** - Messages d'erreur et actions directement dans la page  
+✅ **Système de scoring** - Calcul automatique des points avec pénalités  
+✅ **Annonce DEMBEL** - Stratégie de fin de manche
+
+---
+
+## 📜 Règles du Jeu
+
+### 🎯 Objectif
+Avoir le **moins de points possible** pour gagner la manche!
+
+### 🃏 Déroulement d'un tour
+1. **Défausser** 1 ou plusieurs cartes:
+   - Même valeur (ex: 5♣, 5♦)
+   - Suite de même couleur (ex: 3♥, 4♥, 5♥)
+2. **Piocher** 1 carte parmi:
+   - La pioche (cachée)
+   - La défausse visible
+
+### 💯 Système de Points
+- **As:** 1 point
+- **2-9:** Valeur nominale
+- **10/Valet/Dame/Roi:** 10 points
+
+### 🎯 DEMBEL - L'Annonce Stratégique
+**Condition:** Vous avez ≤10 points  
+**Action:** Cliquez sur "🎯 DEMBEL!" pour finir la manche
+
+**Résultats:**
+- ✅ **Score minimum** → Score = **0 points** (Victoire!)
+- ❌ **Pas score minimum** → Score = **Score ×2** (Pénalité!)
+
+### 👥 Joueurs & Manche
+- **2-5 joueurs** par partie
+- **Classement par points croissants** après chaque manche
+
+---
+
+## 🚀 Installation Locale
+
+### Prérequis
+- **Node.js** 18+ ([télécharger](https://nodejs.org))
+- **npm** (inclus avec Node.js)
+- **Git** (optionnel, pour cloner)
+
+### Étapes
+
+**1. Cloner le projet:**
+```bash
+git clone https://github.com/votre-username/dembel-game.git
+cd dembel-game
+```
+
+**2. Installer les dépendances:**
+```bash
+npm install
+```
+
+**3. Démarrer le serveur:**
+```bash
+npm start
+```
+
+**4. Accéder au jeu:**
+```
+http://localhost:3000
+```
+
+---
+
+## 🌍 Déploiement sur Internet
+
+### Option 1: Railway (Recommandé - Gratuit)
+
+**1. Créer compte:** [railway.app](https://railway.app)  
+**2. Connecter votre repo GitHub  
+**3. Ajouter variables d'environnement:**
+```
+PORT=3000
+NODE_ENV=production
+```
+**4. Deploy → Automatique!**
+
+### Option 2: Heroku
+
+**1. Créer compte:** [heroku.com](https://www.heroku.com)  
+**2. Installer Heroku CLI**
+
+```bash
+heroku login
+heroku create dembel-game
+git push heroku main
+```
+
+### Option 3: Render
+
+**1. Créer compte:** [render.com](https://render.com)  
+**2. New Web Service → Connecter GitHub  
+**3. Configuration automatique**
+
+---
+
+## 📁 Structure du Projet
+
+```
+dembel-game/
+├── server.js              # Serveur Express + Socket.io
+├── public/
+│   ├── index.html         # Page HTML principale
+│   ├── game-client.js     # Logique client
+│   └── style.css          # Styles
+├── package.json           # Dépendances Node.js
+├── .gitignore             # Fichiers à ignorer
+└── README.md              # Ce fichier
+```
+
+### Fichiers Clés
+
+| Fichier | Description |
+|---------|-------------|
+| `server.js` | Serveur Node.js, gestion des salles, logique du jeu |
+| `game-client.js` | Interface UI, événements Socket.io, rendu HTML |
+| `index.html` | Conteneur principal, imports JS/CSS |
+| `style.css` | Styles responsifs (cards, buttons, layout) |
+
+---
+
+## 🔧 Technologies Utilisées
+
+- **Backend:** Node.js + Express.js
+- **Communication:** Socket.io (WebSocket)
+- **Frontend:** HTML5 + CSS3 + JavaScript Vanilla
+- **Hosting:** Railway / Heroku / Render
+
+---
+
+## 📋 API Socket.io
+
+### Client → Serveur
+
+| Événement | Données | Description |
+|-----------|---------|-------------|
+| `register_user` | `{username}` | Connexion utilisateur |
+| `create_room` | - | Créer une nouvelle salle |
+| `join_room` | `{roomId}` | Rejoindre une salle |
+| `start_game` | - | Démarrer la partie (hôte only) |
+| `game_action` | `{type, data}` | Action en jeu (tour/dembel) |
+
+### Serveur → Client
+
+| Événement | Données | Description |
+|-----------|---------|-------------|
+| `registration_success` | `{username}` | Connexion confirmée |
+| `error_notification` | `{message}` | Erreur utilisateur |
+| `room_created` | `{roomId}` | Salle créée |
+| `player_joined` | `{players}` | Joueur rejoint |
+| `game_started` | `{gameState}` | Partie lancée |
+| `game_update` | `{gameState}` | État du jeu mis à jour |
+| `game_ended` | `{scores}` | Manche terminée |
+
+---
+
+## 🎨 Gameplay Screenshots
+
+```
+┌─────────────────────────┐
+│    🃏 DEMBEL            │
+│ Connectez-vous!         │
+│                         │
+│ 👤 Pseudo: [........]   │
+│ [✅ Connecter]          │
+│                         │
+│ 📜 Règles               │
+│ • Moins de points = Win │
+│ • DEMBEL (≤10 pts)      │
+│ • 2-5 joueurs          │
+└─────────────────────────┘
+
+LOBBY:
+┌─────────────────────────┐
+│ 🎲 ABC123               │
+│ 3/5 🎮                  │
+│ Min 2-5 joueurs        │
+│ • Alice 👑              │
+│ • Bob 🎮                │
+│ • Charlie               │
+│ [▶️ Démarrer]           │
+└─────────────────────────┘
+
+PARTIE:
+🎮 VOTRE TOUR!
+📊 Manche 1
+📤 Défausse: 5 cartes
+📚 Pioche: 42 cartes
+🖐️ Main: 8 pts
+  [5♥] [5♠] [K♣] ...
+[🎯 DEMBEL!] [✅ Fin du tour]
+```
+
+---
+
+## 🐛 Débogage & Logs
+
+**Console serveur:**
+```
+✅ Connexion: socket-id
+🎲 http://localhost:3000
+```
+
+**Erreurs courantes:**
+
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| `EADDRINUSE 3000` | Port occupé | `lsof -ti:3000 \| xargs kill -9` |
+| WebSocket déconnecté | Connexion réseau | Vérifier la console |
+| Défausse invalide | Cartes incorrectes | Voir les règles |
+
+---
+
+## 📝 Contribution
+
+Les contributions sont bienvenues! 🎉
+
+1. **Fork** le projet
+2. **Créer une branche:** `git checkout -b feature/new-feature`
+3. **Commit:** `git commit -m "Add feature"`
+4. **Push:** `git push origin feature/new-feature`
+5. **Pull Request**
+
+---
+
+## 🚀 Roadmap
+
+- [ ] Persistance des données (MongoDB)
+- [ ] Historique des manches
+- [ ] Système de classement global
+- [ ] Modes de jeu additionnels
+- [ ] Mobile app (React Native)
+- [ ] Spectateurs en direct
+- [ ] Chat in-game
+- [ ] Avatars personnalisés
+
+---
+
+## 📄 License
+
+Ce projet est sous **MIT License** - Voir [`LICENSE`](LICENSE) pour détails
+
+---
+
+## 👤 Auteur
+
+**Développé avec ❤️**
+
+- 💻 Développeur: [Votre nom]
+- 📧 Email: [votre.email@example.com]
+- 🔗 GitHub: [github.com/votre-username](https://github.com/votre-username)
+
+---
+
+## 💬 Support
+
+Vous avez des questions?
+
+- 📖 **Documentation:** Voir les règles in-game
+- 🐛 **Bug Report:** Créer une [Issue](https://github.com/votre-username/dembel-game/issues)
+- 💡 **Suggestion:** [Discussion](https://github.com/votre-username/dembel-game/discussions)
+
+---
+
+## 🎮 Jouez dès maintenant!
+
+```bash
+npm install && npm start
+```
+
+**Amusez-vous!** 🎲✨
+
+---
+
+**⭐ Si vous aimez ce projet, n'oubliez pas de mettre une étoile!**
+
+```
+  ⭐ → Haut de la page
+     ↓
+  [Star]
+```
+
+---
+
+*Dernière mise à jour: 11 novembre 2025*
