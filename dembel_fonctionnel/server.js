@@ -26,6 +26,7 @@ class DembelGame {
         this.manche_actuelle = 1;
         this.pioche = [];
         this.last_defausse = [];
+        this.old_defausse = [];
         this.tour_actuel = 0;
         this.game_over = false;
         this.messages = [];
@@ -55,7 +56,14 @@ class DembelGame {
     }
 
     piocher(){
-        if(this.pioche.length===0) return null;
+        if(this.pioche.length===0 && this.old_defausse.length >= 1){
+            this.pioche = this.melanger([...this.old_defausse]);
+            this.old_defausse = [];
+        }
+
+        if(this.pioche.length===0) {
+            return null;
+        }
         return this.pioche.shift();
     }
 
@@ -84,6 +92,7 @@ class DembelGame {
     initialiserManche(){
         this.pioche = this.creerPaquet();
         this.last_defausse = [];
+        this.old_defausse = [];
         for(let j of this.joueurs){
             j.main=[];
             for(let i=0;i<7;i++){
@@ -101,7 +110,7 @@ class DembelGame {
     tourJoueur(indices){
         const joueur = this.joueurs[this.tour_actuel];
         if(indices.length>0 && !this.valideDefausse(indices, joueur.main)){
-            this.addMessage("⚠️ Défausse invalide !");
+            this.addMessage("⚠️ Defausse invalide !");
             return false;
         }
         const cartes_defaussees = [];
@@ -110,7 +119,11 @@ class DembelGame {
             cartes_defaussees.push(joueur.main[i]);
             joueur.main.splice(i,1);
         }
-        if(cartes_defaussees.length>0) this.last_defausse = cartes_defaussees;
+
+        if(cartes_defaussees.length>0) {
+            this.old_defausse.push(...this.last_defausse);
+            this.last_defausse = cartes_defaussees;
+        }
         return true;
     }
 
@@ -140,15 +153,21 @@ class DembelGame {
 
     finManche(){
         const scores = {};
-        for(let j of this.joueurs) scores[j.nom]=this.calculPoints(j.main);
+        const annonceur_nom = this.annonceur_dembel !== null ? this.joueurs[this.annonceur_dembel].nom : null;
+        for(let j of this.joueurs) {
+            scores[j.nom] = {
+                points: this.calculPoints(j.main),
+                dembel: j.nom === annonceur_nom
+            };
+        }
         if(this.annonceur_dembel!==null){
             const idx=this.annonceur_dembel;
-            const score_annonceur=scores[this.joueurs[idx].nom];
-            const minScore = Math.min(...Object.values(scores));
+            const score_annonceur=scores[this.joueurs[idx].nom].points;
+            const minScore = Math.min(...Object.values(scores).map(s=>s.points));
             if(score_annonceur===minScore){
-                scores[this.joueurs[idx].nom]=0;
+                scores[this.joueurs[idx].nom].points=0;
             } else {
-                scores[this.joueurs[idx].nom]=score_annonceur*2;
+                scores[this.joueurs[idx].nom].points=score_annonceur*2;
             }
         }
         this.manche_actuelle++;
@@ -160,79 +179,19 @@ class DembelGame {
 io.on('connection', (socket) => {
     console.log('✅ Connexion:', socket.id);
 
-    // ✅ RECONNEXION - Restaurer état si possible
-    socket.on('reconnect_to_game', (data) => {
-        const { username, roomId } = data;
-        console.log('🔄 Tentative reconnexion:', username, 'à', roomId);
-
-        const room = rooms.get(roomId);
-        if (!room) {
-            console.log('❌ Salle inexistante');
-            socket.emit('reconnect_failed', 'Salle inexistante');
-            return;
-        }
-
-        // Vérifier si joueur est dans la partie
-        const playerExists = room.players.find(p => p.username === username);
-        if (!playerExists) {
-            console.log('❌ Joueur pas dans cette salle');
-            socket.emit('reconnect_failed', 'Vous n\'êtes pas dans cette salle');
-            return;
-        }
-
-        // Mettre à jour socketId
-        const player = room.players.find(p => p.username === username);
-        player.socketId = socket.id;
-
-        // Rejoindre la room socket.io
-        socket.join(roomId);
-        socket.username = username;
-
-        // Mettre à jour users map
-        users.set(username, { socketId: socket.id, currentRoom: roomId });
-
-        console.log('✅ Reconnexion OK:', username);
-
-        // Renvoyer état actuel
-        if (room.isGameStarted && room.gameState) {
-            socket.emit('game_started', {
-                gameState: {
-                    joueurs: room.gameState.joueurs,
-                    pioche: room.gameState.pioche,
-                    last_defausse: room.gameState.last_defausse,
-                    tour_actuel: room.gameState.tour_actuel,
-                    manche_actuelle: room.gameState.manche_actuelle,
-                    messages: room.gameState.messages,
-                    annonceur_dembel: room.gameState.annonceur_dembel,
-                    couleurs_symboles: room.gameState.couleurs_symboles,
-                    couleurs_couleur: room.gameState.couleurs_couleur,
-                    points_valeur: room.gameState.points_valeur,
-                    valeurs: room.gameState.valeurs,
-                    couleurs: room.gameState.couleurs
-                }
-            });
-        } else {
-            socket.emit('player_joined', {
-                username: username,
-                players: room.players
-            });
-        }
-    });
-
     socket.on('register_user', (username) => {
         username = username.trim();
         if (!username || username.length < 3) {
-            socket.emit('registration_error', 'Pseudo trop court');
+            socket.emit('error_notification', '⚠️ Pseudo trop court (min 3 caracteres)');
             return;
         }
         if (users.has(username)) {
-            socket.emit('registration_error', 'Pseudo déjà pris');
+            socket.emit('error_notification', '⚠️ Pseudo deja utilise');
             return;
         }
         users.set(username, { socketId: socket.id, currentRoom: null });
         socket.username = username;
         socket.emit('registration_success', { username });
-        console.log('👤', username);
     });
 
     socket.on('create_room', () => {
@@ -249,29 +208,27 @@ io.on('connection', (socket) => {
         socket.join(roomId);
         users.get(socket.username).currentRoom = roomId;
         socket.emit('room_created', { roomId });
-        console.log('🏠 Salle', roomId);
     });
 
     socket.on('join_room', (roomId) => {
         if (!socket.username) return;
         const room = rooms.get(roomId);
         if (!room) {
-            socket.emit('error_message', 'Salle inexistante');
+            socket.emit('error_notification', '❌ Salle inexistante');
             return;
         }
         if (room.isGameStarted) {
-            socket.emit('error_message', 'Partie commencée');
+            socket.emit('error_notification', '❌ Partie deja commencee');
             return;
         }
         if (room.players.length >= MAX_PLAYERS) {
-            socket.emit('error_message', `Max ${MAX_PLAYERS} joueurs`);
+            socket.emit('error_notification', '❌ Salle complete (max '+MAX_PLAYERS+')');
             return;
         }
         room.players.push({ socketId: socket.id, username: socket.username, isHost: false });
         socket.join(roomId);
         users.get(socket.username).currentRoom = roomId;
         io.to(roomId).emit('player_joined', { username: socket.username, players: room.players });
-        console.log('👋', socket.username, 'rejoint', roomId);
     });
 
     socket.on('start_game', () => {
@@ -280,16 +237,17 @@ io.on('connection', (socket) => {
         if (!userInfo || !userInfo.currentRoom) return;
         const room = rooms.get(userInfo.currentRoom);
         if (!room || room.hostId !== socket.id) return;
-        if (room.players.length < MIN_PLAYERS || room.players.length > MAX_PLAYERS) return;
-
+        if (room.players.length < MIN_PLAYERS || room.players.length > MAX_PLAYERS) {
+            socket.emit('error_notification', '❌ Min '+MIN_PLAYERS+' joueurs, max '+MAX_PLAYERS);
+            return;
+        }
         room.isGameStarted = true;
         const game = new DembelGame();
         for (let player of room.players) {
-            game.joueurs.push({ nom: player.username, main: [], humain: true });
+            game.joueurs.push({ nom: player.username, main: [] });
         }
         game.initialiserManche();
         room.gameState = game;
-
         io.to(room.id).emit('game_started', {
             gameState: {
                 joueurs: game.joueurs,
@@ -306,66 +264,34 @@ io.on('connection', (socket) => {
                 couleurs: game.couleurs
             }
         });
-        console.log('🎮 Partie démarrée');
     });
 
     socket.on('game_action', (action) => {
-        if (!socket.username) {
-            console.log('❌ Pas de username');
-            return;
-        }
-
+        if (!socket.username) return;
         const userInfo = users.get(socket.username);
-        if (!userInfo || !userInfo.currentRoom) {
-            console.log('❌ User ou room manquant pour', socket.username);
-            console.log('   userInfo:', userInfo);
-            return;
-        }
-
+        if (!userInfo || !userInfo.currentRoom) return;
         const room = rooms.get(userInfo.currentRoom);
         if (!room || !room.isGameStarted) {
-            console.log('❌ Room', userInfo.currentRoom, 'inexistante ou partie non démarrée');
-            console.log('   Rooms disponibles:', Array.from(rooms.keys()));
-            socket.emit('action_error', 'Erreur de connexion, rechargez la page');
+            socket.emit('error_notification', '❌ Erreur: partie non trouvee');
             return;
         }
-
-        console.log('📥 Action reçue de', socket.username, ':', action.type);
-
         const game = room.gameState;
         const playerIndex = game.joueurs.findIndex(j => j.nom === socket.username);
-
-        console.log('Tour actuel:', game.tour_actuel, '- Index joueur:', playerIndex);
-
         if (playerIndex !== game.tour_actuel) {
-            console.log('❌ Pas le tour de', socket.username);
-            socket.emit('action_error', 'Pas votre tour');
+            socket.emit('error_notification', '⏳ Ce n est pas votre tour');
             return;
         }
-
         if (action.type === 'turn') {
-            console.log('🎴 Défausse:', action.data.defausse);
-            console.log('📚 Pioche:', action.data.pioche);
-
             if (!game.tourJoueur(action.data.defausse)) {
-                console.log('❌ Défausse invalide');
-                socket.emit('action_error', 'Défausse invalide');
+                socket.emit('error_notification', '❌ Defausse invalide');
                 return;
             }
-
             if (action.data.pioche === 'pioche') {
-                console.log('📚 Pioche de la pile');
                 game.piocherCarte('pioche');
             } else if (action.data.pioche) {
-                console.log('📚 Pioche de défausse');
                 game.piocherCarte(action.data.pioche);
             }
-
             game.clearMessages();
-
-            console.log('✅ Tour validé, nouveau tour:', game.tour_actuel);
-            console.log('📤 Envoi game_update à la room', room.id);
-
             io.to(room.id).emit('game_update', {
                 gameState: {
                     joueurs: game.joueurs,
@@ -377,12 +303,9 @@ io.on('connection', (socket) => {
                     annonceur_dembel: game.annonceur_dembel
                 }
             });
-
-            console.log('✅ game_update envoyé');
-
         } else if (action.type === 'dembel') {
             if (!game.canCallDembel()) {
-                socket.emit('action_error', 'Points > 10');
+                socket.emit('error_notification', '❌ DEMBEL impossible: points > 10');
                 return;
             }
             game.dembel();
@@ -393,13 +316,12 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         if (socket.username) {
-            console.log('❌', socket.username, 'déconnecté');
-            // Ne pas supprimer immédiatement - permettre reconnexion
+            users.delete(socket.username);
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`\n🃏 http://localhost:${PORT}\n`);
+    console.log('🎲 http://localhost:' + PORT);
 });

@@ -1,0 +1,154 @@
+@keyframes slideDown {
+    from { transform: translate(-50%, -100%); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 500px;
+    margin: 30px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+
+h1, h3, h4 {
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin: 5px 0;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 10px 15px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    margin: 5px;
+    transition: all 0.2s;
+    background: #667eea;
+    color: white;
+    font-weight: bold;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button.selected {
+    background-color: #28a745;
+    color: #fff;
+    font-weight: bold;
+}
+
+.rules {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.rules h3 {
+    margin-top: 0;
+    color: #667eea;
+}
+
+.rules-text {
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: left;
+    color: #333;
+}
+
+.draw-cards-row, .hand-cards {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.card {
+    width: 70px;
+    height: 95px;
+    border-radius: 8px;
+    background: #e8f4f8;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+}
+
+.card.selected {
+    border: 2px solid #28a745;
+    box-shadow: 0 0 15px rgba(40,167,69,0.5);
+    transform: translateY(-10px);
+}
+
+.card-value {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.card-suit {
+    font-size: 24px;
+}
+
+.action-section {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.ranking {
+    text-align: center;
+}
+
+.ranking-item {
+    text-align: left;
+    transition: transform 0.2s;
+}
+
+.ranking-item:hover {
+    transform: translateY(-3px);
+}

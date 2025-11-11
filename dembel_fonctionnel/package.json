@@ -1,7 +1,6 @@
 {
-  "name": "dembel-persist",
-  "version": "11.0.0",
-  "description": "Dembel - Avec persistance et reconnexion",
+  "name": "dembel-with-rules",
+  "version": "1.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
