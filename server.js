@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -11,13 +12,17 @@ const io = new Server(server, {
     }
 });
 
+
 app.use(express.static('public'));
+
 
 const users = new Map();
 const rooms = new Map();
 
+
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
+
 
 class DembelGame {
     constructor() {
@@ -30,13 +35,14 @@ class DembelGame {
         this.joueurs = [];
         this.manche_actuelle = 1;
         this.pioche = [];
-        this.last_defausse = []; // array of cards (top discard shown on table)
-        this.old_defausse = [];  // array of cards to recycle when pioche empty
+        this.last_defausse = [];
+        this.old_defausse = [];
         this.tour_actuel = 0;
         this.game_over = false;
         this.messages = [];
         this.annonceur_dembel = null;
     }
+
 
     // --- utilitaires ---
     melanger(tableau){
@@ -47,11 +53,13 @@ class DembelGame {
         return tableau;
     }
 
+
     // crée un id unique pour chaque carte (stable pour la partie)
     _makeCardId(couleur, valeur, idx){
         // forme: COULEUR_VALEUR_index
         return `${couleur}_${valeur}_${idx}`;
     }
+
 
     // crée le paquet (avec id unique)
     creerPaquet() {
@@ -66,12 +74,14 @@ class DembelGame {
         return this.melanger(paquet);
     }
 
+
     // compare cartes par id si possible, sinon par valeur+couleur
     _cardEqual(a, b){
         if(!a || !b) return false;
         if(a.id !== undefined && b.id !== undefined) return a.id === b.id;
         return a.valeur === b.valeur && a.couleur === b.couleur;
     }
+
 
     // retourne true si la carte (par id) existe dans un tableau
     _findIndexByCardId(arr, card){
@@ -83,9 +93,11 @@ class DembelGame {
         return arr.findIndex(c => c && c.valeur === card.valeur && c.couleur === card.couleur);
     }
 
+
     calculPoints(main){
         return main.reduce((sum, carte)=>sum+this.points_valeur[carte.valeur],0);
     }
+
 
     // Méthode défensive de recyclage de la pioche
     _recyclerPioche(){
@@ -97,6 +109,7 @@ class DembelGame {
             // rien à recycler
             return;
         }
+
 
         // Construire set d'ids présents dans les mains des joueurs
         const presentIds = new Set();
@@ -114,6 +127,7 @@ class DembelGame {
             else if(c) presentIds.add(`${c.couleur}_${c.valeur}`);
         }
 
+
         // Construire candidats à remettre dans la pioche (exclure présents)
         const candidates = [];
         for(const c of this.old_defausse){
@@ -126,8 +140,10 @@ class DembelGame {
             }
         }
 
+
         // On vide old_defausse (on va reconstruire la pioche à partir des candidats)
         this.old_defausse = [];
+
 
         if(candidates.length === 0){
             // Rien à remettre dans la pioche : on laisse pioche vide (rare)
@@ -135,9 +151,11 @@ class DembelGame {
             return;
         }
 
+
         this.pioche = this.melanger(candidates);
         // last_defausse reste inchangé (on ne le met PAS dans la pioche)
     }
+
 
     piocher(){
         // Si pioche vide : tenter recycle
@@ -145,13 +163,16 @@ class DembelGame {
             this._recyclerPioche();
         }
 
+
         if(!this.pioche || this.pioche.length===0) {
             return null;
         }
 
+
         // On utilise shift pour garder le comportement initial (début du tableau)
         return this.pioche.shift();
     }
+
 
     valideDefausse(indices, main){
         if(indices.length===0) return false;
@@ -175,6 +196,7 @@ class DembelGame {
         return false;
     }
 
+
     initialiserManche(){
         this.pioche = this.creerPaquet();
         this.last_defausse = [];
@@ -190,8 +212,10 @@ class DembelGame {
         if(premiere_carte) this.last_defausse = [premiere_carte];
     }
 
+
     addMessage(msg){ this.messages.push(msg); }
     clearMessages(){ this.messages=[]; }
+
 
     tourJoueur(indices){
         const joueur = this.joueurs[this.tour_actuel];
@@ -206,6 +230,7 @@ class DembelGame {
             joueur.main.splice(i,1);
         }
 
+
         if(cartes_defaussees.length>0) {
             // On ajoute les cartes précédemment sur la table dans old_defausse
             // (les cartes visibles sur table = this.last_defausse)
@@ -218,6 +243,7 @@ class DembelGame {
         }
         return true;
     }
+
 
     piocherCarte(carte){
         const joueur = this.joueurs[this.tour_actuel];
@@ -255,16 +281,19 @@ class DembelGame {
         }
     }
 
+
     canCallDembel(){
         const joueur=this.joueurs[this.tour_actuel];
         return this.calculPoints(joueur.main)<=10;
     }
+
 
     dembel(){
         if(!this.canCallDembel()) return false;
         this.annonceur_dembel = this.tour_actuel;
         return true;
     }
+
 
     finManche(){
         const scores = {};
@@ -290,6 +319,7 @@ class DembelGame {
         return scores;
     }
 
+
     // Helper debug : compter toutes les cartes (pioche + old_defausse + last_defausse + mains)
     _countAllCards(){
         const inPlayers = (this.joueurs || []).reduce((acc, p) => acc + (p.main ? p.main.length : 0), 0);
@@ -300,8 +330,10 @@ class DembelGame {
     }
 }
 
+
 io.on('connection', (socket) => {
     console.log('✅ Connexion:', socket.id);
+
 
     socket.on('register_user', (username) => {
         username = username.trim();
@@ -315,8 +347,10 @@ io.on('connection', (socket) => {
         }
         users.set(username, { socketId: socket.id, currentRoom: null });
         socket.username = username;
+        console.log('✅ Utilisateur enregistre:', username);
         socket.emit('registration_success', { username });
     });
+
 
     socket.on('create_room', () => {
         if (!socket.username) return;
@@ -331,8 +365,10 @@ io.on('connection', (socket) => {
         rooms.set(roomId, room);
         socket.join(roomId);
         users.get(socket.username).currentRoom = roomId;
+        console.log('✅ Salle creee:', roomId, 'par', socket.username);
         socket.emit('room_created', { roomId });
     });
+
 
     socket.on('join_room', (roomId) => {
         if (!socket.username) return;
@@ -352,8 +388,83 @@ io.on('connection', (socket) => {
         room.players.push({ socketId: socket.id, username: socket.username, isHost: false });
         socket.join(roomId);
         users.get(socket.username).currentRoom = roomId;
+        console.log('✅ Joueur', socket.username, 'a rejoint la salle', roomId);
         io.to(roomId).emit('player_joined', { username: socket.username, players: room.players });
     });
+
+
+    // RECONNEXION
+    socket.on('reconnect_to_game', (data) => {
+        const { username, roomId } = data;
+        console.log('🔄 Tentative reconnexion:', username, 'roomId:', roomId);
+
+        if (!username || !roomId) {
+            console.log('❌ Donnees manquantes pour reconnexion');
+            socket.emit('reconnect_failed');
+            return;
+        }
+
+        const room = rooms.get(roomId);
+        if (!room) {
+            console.log('❌ Salle non trouvee:', roomId);
+            socket.emit('reconnect_failed');
+            return;
+        }
+
+        // Vérifier si le joueur était dans cette salle
+        const playerInRoom = room.players.find(p => p.username === username);
+        if (!playerInRoom) {
+            console.log('❌ Joueur', username, 'non trouve dans la salle', roomId);
+            socket.emit('reconnect_failed');
+            return;
+        }
+
+        // Mettre à jour le socketId du joueur
+        playerInRoom.socketId = socket.id;
+        socket.username = username;
+
+        // Mettre à jour la map users
+        if (users.has(username)) {
+            users.get(username).socketId = socket.id;
+            users.get(username).currentRoom = roomId;
+        } else {
+            users.set(username, { socketId: socket.id, currentRoom: roomId });
+        }
+
+        socket.join(roomId);
+
+        console.log('✅ Reconnexion reussie:', username, 'vers salle', roomId);
+
+        if (room.isGameStarted) {
+            // PARTIE EN COURS : Envoyer l'état du jeu
+            console.log('📊 Renvoi de letat du jeu');
+            const game = room.gameState;
+            socket.emit('game_started', {
+                gameState: {
+                    joueurs: game.joueurs,
+                    pioche: game.pioche,
+                    last_defausse: game.last_defausse,
+                    tour_actuel: game.tour_actuel,
+                    manche_actuelle: game.manche_actuelle,
+                    messages: game.messages,
+                    annonceur_dembel: game.annonceur_dembel,
+                    couleurs_symboles: game.couleurs_symboles,
+                    couleurs_couleur: game.couleurs_couleur,
+                    points_valeur: game.points_valeur,
+                    valeurs: game.valeurs,
+                    couleurs: game.couleurs
+                }
+            });
+        } else {
+            // SALLE D'ATTENTE : Envoyer la mise à jour du lobby
+            console.log('👥 Renvoi de letat du lobby');
+            socket.emit('player_joined', { 
+                username: username, 
+                players: room.players 
+            });
+        }
+    });
+
 
     socket.on('start_game', () => {
         if (!socket.username) return;
@@ -372,7 +483,9 @@ io.on('connection', (socket) => {
         }
         game.initialiserManche();
         room.gameState = game;
-        // Optionnel : debug total cartes
+
+        console.log('🎮 Partie lancee dans la salle', room.id);
+
         if(process.env.DEBUG_CARD_COUNT === "1"){
             console.log('DEBUG card counts after init:', game._countAllCards());
         }
@@ -393,6 +506,7 @@ io.on('connection', (socket) => {
             }
         });
     });
+
 
     socket.on('game_action', (action) => {
         if (!socket.username) return;
@@ -421,7 +535,6 @@ io.on('connection', (socket) => {
             }
             game.clearMessages();
 
-            // Optionnel debug counts
             if(process.env.DEBUG_CARD_COUNT === "1"){
                 console.log('DEBUG card counts after turn:', game._countAllCards());
             }
@@ -448,14 +561,117 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
-        if (socket.username) {
-            users.delete(socket.username);
+
+    // Quitter la salle/partie
+    socket.on('leave_room', () => {
+        if (!socket.username) return;
+
+        const userInfo = users.get(socket.username);
+        if (!userInfo || !userInfo.currentRoom) return;
+
+        const roomId = userInfo.currentRoom;
+        const room = rooms.get(roomId);
+        if (!room) return;
+
+        console.log('👋 Joueur', socket.username, 'quitte la salle', roomId);
+
+        // Retirer le joueur de la liste
+        room.players = room.players.filter(p => p.socketId !== socket.id);
+
+        if (room.isGameStarted) {
+            // PARTIE EN COURS : Supprimer la salle et notifier les autres
+            console.log('❌ Partie en cours - Salle supprimee');
+
+            io.to(roomId).emit('error_notification', '❌ ' + socket.username + ' a quitte la partie. Salle fermee.');
+            io.to(roomId).emit('room_closed');
+
+            rooms.delete(roomId);
+        } else {
+            // SALLE D'ATTENTE : Mettre à jour et notifier
+            console.log('⭕ Salle dattente - Mise a jour');
+
+            if (room.players.length === 0) {
+                // Si plus personne : supprimer la salle
+                console.log('🗑️ Salle', roomId, 'supprimee (vide)');
+                rooms.delete(roomId);
+            } else {
+                // Si quelqu'un reste : envoyer mise à jour
+                if (room.hostId === socket.id && room.players.length > 0) {
+                    // Si l'hôte s'en va, passer l'hôte au premier joueur
+                    room.hostId = room.players[0].socketId;
+                    room.players[0].isHost = true;
+                }
+
+                io.to(roomId).emit('player_joined', { 
+                    username: socket.username + ' a quitte', 
+                    players: room.players 
+                });
+            }
         }
+
+        userInfo.currentRoom = null;
+        socket.leave(roomId);
+    });
+
+
+    socket.on('disconnect', () => {
+        if (!socket.username) return;
+
+        const userInfo = users.get(socket.username);
+        if (!userInfo || !userInfo.currentRoom) {
+            users.delete(socket.username);
+            return;
+        }
+
+        const roomId = userInfo.currentRoom;
+        const room = rooms.get(roomId);
+        if (!room) {
+            users.delete(socket.username);
+            return;
+        }
+
+        console.log('❌ Deconnexion:', socket.username, 'de la salle', roomId);
+
+        // Retirer le joueur de la liste
+        room.players = room.players.filter(p => p.socketId !== socket.id);
+
+        if (room.isGameStarted) {
+            // PARTIE EN COURS : Supprimer la salle et notifier les autres
+            console.log('❌ Joueur deconnecte en plein jeu - Salle supprimee');
+
+            io.to(roomId).emit('error_notification', '❌ ' + socket.username + ' a quitte la partie. Salle fermee.');
+            io.to(roomId).emit('room_closed');
+
+            rooms.delete(roomId);
+        } else {
+            // SALLE D'ATTENTE : Mettre à jour et notifier
+            console.log('⭕ Joueur deconnecte en salle dattente');
+
+            if (room.players.length === 0) {
+                // Si plus personne : supprimer la salle
+                console.log('🗑️ Salle', roomId, 'supprimee (vide)');
+                rooms.delete(roomId);
+            } else {
+                // Si quelqu'un reste : envoyer mise à jour
+                if (room.hostId === socket.id && room.players.length > 0) {
+                    // Si l'hôte s'en va, passer l'hôte au premier joueur
+                    room.hostId = room.players[0].socketId;
+                    room.players[0].isHost = true;
+                }
+
+                io.to(roomId).emit('player_joined', { 
+                    username: socket.username + ' s est deconnecte', 
+                    players: room.players 
+                });
+            }
+        }
+
+        users.delete(socket.username);
     });
 });
 
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log('🎲 Serveur lancé sur port ' + PORT);
+    console.log('🎲 Serveur lance sur port ' + PORT);
 });

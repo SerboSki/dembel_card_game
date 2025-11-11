@@ -10,6 +10,7 @@ class DembelGame {
         this.manche_actuelle = 1;
         this.pioche = [];
         this.last_defausse = [];
+        this.old_defausse = [];
         this.tour_actuel = 0;
         this.game_over = false;
         this.messages = [];
@@ -43,14 +44,25 @@ window.addEventListener('load', () => {
     const savedUser = sessionStorage.getItem('dembel_username');
     const savedRoom = sessionStorage.getItem('dembel_roomId');
     if (savedUser && savedRoom) {
+        console.log('🔄 Tentative de reconnexion:', savedUser, 'à', savedRoom);
         socket.emit('reconnect_to_game', { username: savedUser, roomId: savedRoom });
     } else {
         render();
     }
 });
 
-socket.on('connect', () => { console.log('✅ Connecte'); });
+socket.on('connect', () => { 
+    console.log('✅ Connecte'); 
+    const savedUser = sessionStorage.getItem('dembel_username');
+    const savedRoom = sessionStorage.getItem('dembel_roomId');
+    if (savedUser && savedRoom && !currentUser) {
+        console.log('🔄 Reconnexion après reconnect socket');
+        socket.emit('reconnect_to_game', { username: savedUser, roomId: savedRoom });
+    }
+});
+
 socket.on('reconnect_failed', () => {
+    console.log('❌ Reconnexion échouée');
     sessionStorage.removeItem('dembel_username');
     sessionStorage.removeItem('dembel_roomId');
     currentUser = null;
@@ -58,12 +70,15 @@ socket.on('reconnect_failed', () => {
     game = null;
     render();
 });
+
 socket.on('registration_success', (data) => {
     currentUser = data.username;
     sessionStorage.setItem('dembel_username', data.username);
     render();
 });
+
 socket.on('error_notification', (m) => { showErrorNotification(m); });
+
 socket.on('room_created', (data) => {
     currentRoom = data.roomId;
     sessionStorage.setItem('dembel_roomId', data.roomId);
@@ -71,6 +86,7 @@ socket.on('room_created', (data) => {
     isHost = true;
     render();
 });
+
 socket.on('player_joined', (data) => {
     if (data.players) {
         roomPlayers = data.players.map(p => p.username);
@@ -82,6 +98,7 @@ socket.on('player_joined', (data) => {
     }
     render();
 });
+
 socket.on('game_started', (data) => {
     game = new DembelGame();
     Object.assign(game, data.gameState);
@@ -99,6 +116,7 @@ socket.on('game_started', (data) => {
     isProcessing = false;
     render();
 });
+
 socket.on('game_update', (data) => {
     if (!game) game = new DembelGame();
     Object.assign(game, data.gameState);
@@ -118,8 +136,17 @@ socket.on('game_update', (data) => {
     isProcessing = false;
     render();
 });
+
 socket.on('game_ended', (data) => {
     renderClassement(data.scores);
+});
+
+socket.on('room_closed', () => {
+    console.log('🚪 Salle fermée');
+    sessionStorage.removeItem('dembel_roomId');
+    currentRoom = null;
+    game = null;
+    render();
 });
 
 function showErrorNotification(msg) {
@@ -169,6 +196,7 @@ function registerUser() {
 }
 
 function createRoom() { socket.emit('create_room'); }
+
 function joinRoom() {
     const roomId = document.getElementById('room_id_input')?.value?.trim()?.toUpperCase();
     if (!roomId) {
@@ -179,12 +207,21 @@ function joinRoom() {
     currentRoom = roomId;
     socket.emit('join_room', roomId);
 }
+
 function startGame() {
     if (roomPlayers.length < MIN_PLAYERS) {
         showErrorNotification('❌ Min '+MIN_PLAYERS+' joueurs');
         return;
     }
     socket.emit('start_game', {});
+}
+
+function leaveRoom() {
+    socket.emit('leave_room');
+    sessionStorage.removeItem('dembel_roomId');
+    currentRoom = null;
+    game = null;
+    render();
 }
 
 function toggleCard(idx) {
@@ -288,7 +325,7 @@ function renderWaiting() {
         const badge = (isHost && p === currentUser) ? ' 👑' : (p === currentUser ? ' 🎮' : '');
         return '<li>👤 <strong>' + p + '</strong>' + badge + '</li>';
     }).join('');
-    return '<div class="container"><h1>🎲 ' + currentRoom + '</h1><button id="copy-room-btn" onclick="copyRoomCode()" style="background:#2196F3;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:16px;margin:10px 0;transition:all 0.2s ease;font-weight:bold;display:block;margin-left:auto;margin-right:auto">📋 Copier le code</button><div style="text-align:center;padding:10px;background:' + statusColor + ';border-radius:8px;font-weight:bold">' + roomPlayers.length + '/' + MAX_PLAYERS + ' 🎮</div><div style="text-align:center;padding:8px;background:#f0f0f0;border-radius:8px;font-size:12px;margin:10px 0">Min '+MIN_PLAYERS+' joueurs - Max '+MAX_PLAYERS+' joueurs</div><h3>👥 Joueurs:</h3><ul style="list-style:none;text-align:center">' + playerList + '</ul><div style="text-align:center">' + (isHost ? '<button onclick="startGame()" ' + (!canStart ? 'disabled' : '') + ' style="background:#4caf50">▶️ Demarrer</button>' : '<p>⏳ En attente...</p>') + '</div></div>';
+    return '<div class="container"><h1>🎲 ' + currentRoom + '</h1><button id="copy-room-btn" onclick="copyRoomCode()" style="background:#2196F3;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:16px;margin:10px 0;transition:all 0.2s ease;font-weight:bold;display:block;margin-left:auto;margin-right:auto">📋 Copier le code</button><div style="text-align:center;padding:10px;background:' + statusColor + ';border-radius:8px;font-weight:bold">' + roomPlayers.length + '/' + MAX_PLAYERS + ' 🎮</div><div style="text-align:center;padding:8px;background:#f0f0f0;border-radius:8px;font-size:12px;margin:10px 0">Min '+MIN_PLAYERS+' joueurs - Max '+MAX_PLAYERS+' joueurs</div><h3>👥 Joueurs:</h3><ul style="list-style:none;text-align:center">' + playerList + '</ul><div style="text-align:center">' + (isHost ? '<button onclick="startGame()" ' + (!canStart ? 'disabled' : '') + ' style="background:#4caf50">▶️ Demarrer</button>' : '<p>⏳ En attente...</p>') + '</div><div style="text-align:center;margin-top:20px"><button onclick="leaveRoom()" style="background:#ff6b6b;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:14px">🚪 Quitter</button></div></div>';
 }
 
 function renderGameBoard() {
@@ -299,9 +336,15 @@ function renderGameBoard() {
     const currentPlayerName = game.joueurs[game.tour_actuel]?.nom || '';
     const turnBg = myTurn ? '#28a745' : '#ffd43b';
 
-    let html = '<div class="container"><div style="background:' + turnBg + ';color:white;padding:15px;text-align:center;font-weight:bold;border-radius:10px;margin:10px 0;font-size:18px">';
+    let html = '<div class="container"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">';
+    html += '<div style="flex:1"></div>';
+    html += '<div style="text-align:center;flex:1"><h4 style="margin:0">📊 Manche ' + game.manche_actuelle + '</h4></div>';
+    html += '<div style="flex:1;text-align:right"><button onclick="leaveRoom()" style="background:#ff6b6b;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:14px;font-weight:bold">🚪 Quitter</button></div>';
+    html += '</div>';
+
+    html += '<div style="background:' + turnBg + ';color:white;padding:15px;text-align:center;font-weight:bold;border-radius:10px;margin:10px 0;font-size:18px">';
     html += myTurn ? '🎮 VOTRE TOUR!' : '⏳ ' + currentPlayerName;
-    html += '</div><h4>📊 Manche ' + game.manche_actuelle + '</h4>';
+    html += '</div>';
 
     if (game.messages && game.messages.length > 0) {
         html += '<div style="background:#e3f2fd;border-left:4px solid #2196F3;color:#1565c0;padding:12px;margin:10px 0;border-radius:4px;font-weight:500">';
@@ -343,7 +386,8 @@ function renderGameBoard() {
     if (game.calculPoints(monJoueur.main) <= 10 && myTurn) {
         html += '<button onclick="callDembel()" style="background:#ff6b35;font-size:16px">🎯 DEMBEL!</button>';
     }
-    html += '<button onclick="endTurn()" ' + (canEnd ? '' : 'disabled') + ' style="background:#667eea;font-size:16px">✅ Fin du tour</button></div></div>';
+    html += '<button onclick="endTurn()" ' + (canEnd ? '' : 'disabled') + ' style="background:#667eea;font-size:16px">✅ Fin du tour</button>';
+    html += '</div></div>';
 
     return html;
 }
