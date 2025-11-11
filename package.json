@@ -1,10 +1,19 @@
 {
-  "name": "dembel-with-rules",
+  "name": "dembel-game",
   "version": "1.0.0",
+  "description": "Jeu de cartes multijoueur en ligne",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
+  "keywords": [
+    "card game",
+    "dembel",
+    "multiplayer"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.6.1"
