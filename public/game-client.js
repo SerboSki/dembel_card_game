@@ -253,10 +253,10 @@ function copyRoomCode() {
         if (btn) {
             const originalText = btn.innerHTML;
             btn.innerHTML = '✅ Copié!';
-            btn.style.background = '#2196F3';
+            btn.style.background = '#4caf50';
             setTimeout(() => {
                 btn.innerHTML = originalText;
-                btn.style.background = '';
+                btn.style.background = '#2196F3';
             }, 2000);
         }
     }).catch(err => {
@@ -288,7 +288,7 @@ function renderWaiting() {
         const badge = (isHost && p === currentUser) ? ' 👑' : (p === currentUser ? ' 🎮' : '');
         return '<li>👤 <strong>' + p + '</strong>' + badge + '</li>';
     }).join('');
-    return '<div class="container"><h1>🎲 ' + currentRoom + ' <button id="copy-room-btn" onclick="copyRoomCode()" style="background:#2196F3;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:16px;margin-left:8px;transition:all 0.2s ease;font-weight:bold">📋 Copier</button></h1><div style="text-align:center;padding:10px;background:' + statusColor + ';border-radius:8px;font-weight:bold">' + roomPlayers.length + '/' + MAX_PLAYERS + ' 🎮</div><div style="text-align:center;padding:8px;background:#f0f0f0;border-radius:8px;font-size:12px;margin:10px 0">Min '+MIN_PLAYERS+' joueurs - Max '+MAX_PLAYERS+' joueurs</div><h3>👥 Joueurs:</h3><ul style="list-style:none;text-align:center">' + playerList + '</ul><div style="text-align:center">' + (isHost ? '<button onclick="startGame()" ' + (!canStart ? 'disabled' : '') + ' style="background:#4caf50">▶️ Demarrer</button>' : '<p>⏳ En attente...</p>') + '</div></div>';
+    return '<div class="container"><h1>🎲 ' + currentRoom + '</h1><button id="copy-room-btn" onclick="copyRoomCode()" style="background:#2196F3;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:16px;margin:10px 0;transition:all 0.2s ease;font-weight:bold;display:block;margin-left:auto;margin-right:auto">📋 Copier le code</button><div style="text-align:center;padding:10px;background:' + statusColor + ';border-radius:8px;font-weight:bold">' + roomPlayers.length + '/' + MAX_PLAYERS + ' 🎮</div><div style="text-align:center;padding:8px;background:#f0f0f0;border-radius:8px;font-size:12px;margin:10px 0">Min '+MIN_PLAYERS+' joueurs - Max '+MAX_PLAYERS+' joueurs</div><h3>👥 Joueurs:</h3><ul style="list-style:none;text-align:center">' + playerList + '</ul><div style="text-align:center">' + (isHost ? '<button onclick="startGame()" ' + (!canStart ? 'disabled' : '') + ' style="background:#4caf50">▶️ Demarrer</button>' : '<p>⏳ En attente...</p>') + '</div></div>';
 }
 
 function renderGameBoard() {
