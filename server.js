@@ -30,24 +30,15 @@ class DembelGame {
         this.joueurs = [];
         this.manche_actuelle = 1;
         this.pioche = [];
-        this.last_defausse = [];
-        this.old_defausse = [];
+        this.last_defausse = []; // array of cards (top discard shown on table)
+        this.old_defausse = [];  // array of cards to recycle when pioche empty
         this.tour_actuel = 0;
         this.game_over = false;
         this.messages = [];
         this.annonceur_dembel = null;
     }
 
-    creerPaquet() {
-        const paquet = [];
-        for(let v of this.valeurs){
-            for(let c of this.couleurs){
-                paquet.push({valeur:v,couleur:c});
-            }
-        }
-        return this.melanger(paquet);
-    }
-
+    // --- utilitaires ---
     melanger(tableau){
         for(let i=tableau.length-1;i>0;i--){
             const j = Math.floor(Math.random()*(i+1));
@@ -56,19 +47,109 @@ class DembelGame {
         return tableau;
     }
 
+    // crée un id unique pour chaque carte (stable pour la partie)
+    _makeCardId(couleur, valeur, idx){
+        // forme: COULEUR_VALEUR_index
+        return `${couleur}_${valeur}_${idx}`;
+    }
+
+    // crée le paquet (avec id unique)
+    creerPaquet() {
+        const paquet = [];
+        let idx = 0;
+        for(let v of this.valeurs){
+            for(let c of this.couleurs){
+                paquet.push({id: this._makeCardId(c, v, idx), valeur: v, couleur: c});
+                idx++;
+            }
+        }
+        return this.melanger(paquet);
+    }
+
+    // compare cartes par id si possible, sinon par valeur+couleur
+    _cardEqual(a, b){
+        if(!a || !b) return false;
+        if(a.id !== undefined && b.id !== undefined) return a.id === b.id;
+        return a.valeur === b.valeur && a.couleur === b.couleur;
+    }
+
+    // retourne true si la carte (par id) existe dans un tableau
+    _findIndexByCardId(arr, card){
+        if(!Array.isArray(arr) || !card) return -1;
+        if(card.id !== undefined){
+            return arr.findIndex(c => c && c.id === card.id);
+        }
+        // fallback : value + couleur
+        return arr.findIndex(c => c && c.valeur === card.valeur && c.couleur === card.couleur);
+    }
+
     calculPoints(main){
         return main.reduce((sum, carte)=>sum+this.points_valeur[carte.valeur],0);
     }
 
-    piocher(){
-        if(this.pioche.length===0 && this.old_defausse.length >= 1){
-            this.pioche = this.melanger([...this.old_defausse]);
-            this.old_defausse = [];
+    // Méthode défensive de recyclage de la pioche
+    _recyclerPioche(){
+        // On reconstruit la pioche à partir de old_defausse,
+        // mais on exclut toute carte qui se trouve déjà dans :
+        // - les mains des joueurs
+        // - la last_defausse (top visible)
+        if(!this.old_defausse || this.old_defausse.length === 0) {
+            // rien à recycler
+            return;
         }
 
-        if(this.pioche.length===0) {
+        // Construire set d'ids présents dans les mains des joueurs
+        const presentIds = new Set();
+        for(const p of this.joueurs){
+            if(Array.isArray(p.main)){
+                for(const c of p.main){
+                    if(c && c.id) presentIds.add(c.id);
+                    else if(c) presentIds.add(`${c.couleur}_${c.valeur}`); // fallback
+                }
+            }
+        }
+        // ajouter la carte(s) de last_defausse dans presentIds pour ne pas les remettre en pioche
+        for(const c of this.last_defausse || []){
+            if(c && c.id) presentIds.add(c.id);
+            else if(c) presentIds.add(`${c.couleur}_${c.valeur}`);
+        }
+
+        // Construire candidats à remettre dans la pioche (exclure présents)
+        const candidates = [];
+        for(const c of this.old_defausse){
+            if(!c) continue;
+            const idKey = c.id ? c.id : `${c.couleur}_${c.valeur}`;
+            if(!presentIds.has(idKey)){
+                candidates.push(c);
+            } else {
+                // Si la carte est déjà dans une main ou dans last_defausse, on l'ignore lors du recyclage.
+            }
+        }
+
+        // On vide old_defausse (on va reconstruire la pioche à partir des candidats)
+        this.old_defausse = [];
+
+        if(candidates.length === 0){
+            // Rien à remettre dans la pioche : on laisse pioche vide (rare)
+            this.pioche = [];
+            return;
+        }
+
+        this.pioche = this.melanger(candidates);
+        // last_defausse reste inchangé (on ne le met PAS dans la pioche)
+    }
+
+    piocher(){
+        // Si pioche vide : tenter recycle
+        if((!this.pioche || this.pioche.length===0) && this.old_defausse && this.old_defausse.length >= 1){
+            this._recyclerPioche();
+        }
+
+        if(!this.pioche || this.pioche.length===0) {
             return null;
         }
+
+        // On utilise shift pour garder le comportement initial (début du tableau)
         return this.pioche.shift();
     }
 
@@ -126,7 +207,13 @@ class DembelGame {
         }
 
         if(cartes_defaussees.length>0) {
-            this.old_defausse.push(...this.last_defausse);
+            // On ajoute les cartes précédemment sur la table dans old_defausse
+            // (les cartes visibles sur table = this.last_defausse)
+            if(this.last_defausse && this.last_defausse.length>0){
+                // push copies/references : on veut conserver l'objet carte
+                this.old_defausse.push(...this.last_defausse);
+            }
+            // puis on remplace last_defausse par les nouvelles cartes déposées
             this.last_defausse = cartes_defaussees;
         }
         return true;
@@ -138,11 +225,34 @@ class DembelGame {
             const c = this.piocher();
             if(c) joueur.main.push(c);
         } else if(carte && carte.valeur){
-            joueur.main.push(carte);
-            const idx = this.last_defausse.indexOf(carte);
-            if(idx!==-1) this.last_defausse.splice(idx,1);
+            // Le client a choisi de prendre une carte depuis la défausse (last_defausse)
+            // il nous envoie probablement un objet carte (mais pas forcément la même référence)
+            // On recherche la carte dans last_defausse par id / valeur+couleur, et on la retire.
+            const idx = this._findIndexByCardId(this.last_defausse, carte);
+            if(idx!==-1){
+                const taken = this.last_defausse.splice(idx,1)[0];
+                // on ajoute la carte prise à la main du joueur
+                joueur.main.push(taken);
+            } else {
+                // Par sécurité, si idx introuvable (références divergentes), on tente de chercher dans old_defausse
+                const idxOld = this._findIndexByCardId(this.old_defausse, carte);
+                if(idxOld!==-1){
+                    const taken = this.old_defausse.splice(idxOld,1)[0];
+                    joueur.main.push(taken);
+                } else {
+                    // Si on ne trouve pas, on n'ajoute rien mais on log si debug
+                    if(process.env.DEBUG_CARD_COUNT === "1") {
+                        console.warn('Warning: carte demandee par client introuvable dans last_defausse/old_defausse', carte);
+                    }
+                }
+            }
         }
-        this.tour_actuel=(this.tour_actuel+1)%this.joueurs.length;
+        // passer au joueur suivant si il y a des joueurs
+        if(this.joueurs && this.joueurs.length > 0) {
+            this.tour_actuel=(this.tour_actuel+1)%this.joueurs.length;
+        } else {
+            this.tour_actuel = 0;
+        }
     }
 
     canCallDembel(){
@@ -178,6 +288,15 @@ class DembelGame {
         this.manche_actuelle++;
         this.annonceur_dembel=null;
         return scores;
+    }
+
+    // Helper debug : compter toutes les cartes (pioche + old_defausse + last_defausse + mains)
+    _countAllCards(){
+        const inPlayers = (this.joueurs || []).reduce((acc, p) => acc + (p.main ? p.main.length : 0), 0);
+        const piocheCount = this.pioche ? this.pioche.length : 0;
+        const oldDefCount = this.old_defausse ? this.old_defausse.length : 0;
+        const lastDefCount = this.last_defausse ? this.last_defausse.length : 0;
+        return { total: inPlayers + piocheCount + oldDefCount + lastDefCount, breakdown: {inPlayers, piocheCount, oldDefCount, lastDefCount} };
     }
 }
 
@@ -253,6 +372,10 @@ io.on('connection', (socket) => {
         }
         game.initialiserManche();
         room.gameState = game;
+        // Optionnel : debug total cartes
+        if(process.env.DEBUG_CARD_COUNT === "1"){
+            console.log('DEBUG card counts after init:', game._countAllCards());
+        }
         io.to(room.id).emit('game_started', {
             gameState: {
                 joueurs: game.joueurs,
@@ -297,6 +420,12 @@ io.on('connection', (socket) => {
                 game.piocherCarte(action.data.pioche);
             }
             game.clearMessages();
+
+            // Optionnel debug counts
+            if(process.env.DEBUG_CARD_COUNT === "1"){
+                console.log('DEBUG card counts after turn:', game._countAllCards());
+            }
+
             io.to(room.id).emit('game_update', {
                 gameState: {
                     joueurs: game.joueurs,
