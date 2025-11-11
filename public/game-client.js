@@ -39,30 +39,67 @@ let selected_public_card = null;
 let selected_from_pile = false;
 let previousTurn = -1;
 let isProcessing = false;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+function attemptReconnect() {
+    const savedUser = sessionStorage.getItem('dembel_username');
+    const savedRoom = sessionStorage.getItem('dembel_roomId');
+
+    console.log('🔄 Tentative reconnexion', reconnectAttempts + 1, '/', MAX_RECONNECT_ATTEMPTS);
+    console.log('   Username:', savedUser);
+    console.log('   RoomId:', savedRoom);
+    console.log('   Socket connected:', socket.connected);
+    console.log('   Socket id:', socket.id);
+
+    if (savedUser && savedRoom && socket.connected) {
+        reconnectAttempts++;
+        socket.emit('reconnect_to_game', { username: savedUser, roomId: savedRoom });
+    } else if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && socket.connected) {
+        setTimeout(attemptReconnect, 500);
+    } else if (!socket.connected && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        setTimeout(attemptReconnect, 500);
+    } else {
+        console.log('❌ Reconnexion impossible, affichage login');
+        render();
+    }
+}
 
 window.addEventListener('load', () => {
     const savedUser = sessionStorage.getItem('dembel_username');
     const savedRoom = sessionStorage.getItem('dembel_roomId');
+
+    console.log('🌍 Page chargee');
+    console.log('   Username sauvegarde:', savedUser);
+    console.log('   RoomId sauvegarde:', savedRoom);
+
     if (savedUser && savedRoom) {
-        console.log('🔄 Tentative de reconnexion:', savedUser, 'à', savedRoom);
-        socket.emit('reconnect_to_game', { username: savedUser, roomId: savedRoom });
+        console.log('🔄 Donnees de session trouvees, tentative de reconnexion');
+        if (socket.connected) {
+            attemptReconnect();
+        } else {
+            setTimeout(attemptReconnect, 1000);
+        }
     } else {
+        console.log('📝 Aucune session, affichage login');
         render();
     }
 });
 
 socket.on('connect', () => { 
-    console.log('✅ Connecte'); 
+    console.log('✅ Socket connecte, id:', socket.id);
+
     const savedUser = sessionStorage.getItem('dembel_username');
     const savedRoom = sessionStorage.getItem('dembel_roomId');
-    if (savedUser && savedRoom && !currentUser) {
-        console.log('🔄 Reconnexion après reconnect socket');
-        socket.emit('reconnect_to_game', { username: savedUser, roomId: savedRoom });
+    if (savedUser && savedRoom && !currentUser && reconnectAttempts === 0) {
+        console.log('🔄 Reconnexion suite a connexion socket');
+        attemptReconnect();
     }
 });
 
 socket.on('reconnect_failed', () => {
-    console.log('❌ Reconnexion échouée');
+    console.log('❌ Reconnexion echouee');
+    reconnectAttempts = 0;
     sessionStorage.removeItem('dembel_username');
     sessionStorage.removeItem('dembel_roomId');
     currentUser = null;
@@ -72,34 +109,43 @@ socket.on('reconnect_failed', () => {
 });
 
 socket.on('registration_success', (data) => {
+    reconnectAttempts = 0;
     currentUser = data.username;
     sessionStorage.setItem('dembel_username', data.username);
+    console.log('✅ Utilisateur enregistre:', currentUser);
     render();
 });
 
 socket.on('error_notification', (m) => { showErrorNotification(m); });
 
 socket.on('room_created', (data) => {
+    reconnectAttempts = 0;
     currentRoom = data.roomId;
     sessionStorage.setItem('dembel_roomId', data.roomId);
-    roomPlayers = [currentUser];
+    roomPlayers = [{ username: currentUser, isHost: true }];
     isHost = true;
+    console.log('✅ Salle creee:', currentRoom);
     render();
 });
 
 socket.on('player_joined', (data) => {
+    reconnectAttempts = 0;
     if (data.players) {
-        roomPlayers = data.players.map(p => p.username);
-    } else if (!roomPlayers.includes(data.username)) {
-        roomPlayers.push(data.username);
+        roomPlayers = data.players;
+        // Déterminer si je suis hôte
+        const myPlayer = roomPlayers.find(p => p.username === currentUser);
+        isHost = myPlayer ? myPlayer.isHost : false;
     }
     if (!currentRoom) {
         currentRoom = sessionStorage.getItem('dembel_roomId');
     }
+    console.log('👥 Joueurs mis a jour:', roomPlayers);
+    console.log('   Je suis hote:', isHost);
     render();
 });
 
 socket.on('game_started', (data) => {
+    reconnectAttempts = 0;
     game = new DembelGame();
     Object.assign(game, data.gameState);
     game.couleurs_symboles = data.gameState.couleurs_symboles;
@@ -114,6 +160,7 @@ socket.on('game_started', (data) => {
     selected_public_card = null;
     selected_from_pile = false;
     isProcessing = false;
+    console.log('🎮 Partie lancee ou restauree');
     render();
 });
 
@@ -142,7 +189,8 @@ socket.on('game_ended', (data) => {
 });
 
 socket.on('room_closed', () => {
-    console.log('🚪 Salle fermée');
+    console.log('🚪 Salle fermee');
+    reconnectAttempts = 0;
     sessionStorage.removeItem('dembel_roomId');
     currentRoom = null;
     game = null;
@@ -217,6 +265,7 @@ function startGame() {
 }
 
 function leaveRoom() {
+    reconnectAttempts = 0;
     socket.emit('leave_room');
     sessionStorage.removeItem('dembel_roomId');
     currentRoom = null;
@@ -289,7 +338,7 @@ function copyRoomCode() {
         const btn = document.getElementById('copy-room-btn');
         if (btn) {
             const originalText = btn.innerHTML;
-            btn.innerHTML = '✅ Copié!';
+            btn.innerHTML = '✅ Copie!';
             btn.style.background = '#4caf50';
             setTimeout(() => {
                 btn.innerHTML = originalText;
@@ -303,6 +352,7 @@ function copyRoomCode() {
 }
 
 function newGame() {
+    reconnectAttempts = 0;
     sessionStorage.removeItem('dembel_username');
     sessionStorage.removeItem('dembel_roomId');
     location.reload();
@@ -322,8 +372,15 @@ function renderWaiting() {
     const canStart = isHost && roomPlayers.length >= MIN_PLAYERS;
     const statusColor = roomPlayers.length < MIN_PLAYERS ? '#ff6b6b' : '#51cf66';
     const playerList = roomPlayers.map(p => {
-        const badge = (isHost && p === currentUser) ? ' 👑' : (p === currentUser ? ' 🎮' : '');
-        return '<li>👤 <strong>' + p + '</strong>' + badge + '</li>';
+        let badge = '';
+        if (p.isHost && p.username === currentUser) {
+            badge = ' 👑🎮';
+        } else if (p.isHost) {
+            badge = ' 👑';
+        } else if (p.username === currentUser) {
+            badge = ' 🎮';
+        }
+        return '<li>👤 <strong>' + p.username + '</strong>' + badge + '</li>';
     }).join('');
     return '<div class="container"><h1>🎲 ' + currentRoom + '</h1><button id="copy-room-btn" onclick="copyRoomCode()" style="background:#2196F3;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:16px;margin:10px 0;transition:all 0.2s ease;font-weight:bold;display:block;margin-left:auto;margin-right:auto">📋 Copier le code</button><div style="text-align:center;padding:10px;background:' + statusColor + ';border-radius:8px;font-weight:bold">' + roomPlayers.length + '/' + MAX_PLAYERS + ' 🎮</div><div style="text-align:center;padding:8px;background:#f0f0f0;border-radius:8px;font-size:12px;margin:10px 0">Min '+MIN_PLAYERS+' joueurs - Max '+MAX_PLAYERS+' joueurs</div><h3>👥 Joueurs:</h3><ul style="list-style:none;text-align:center">' + playerList + '</ul><div style="text-align:center">' + (isHost ? '<button onclick="startGame()" ' + (!canStart ? 'disabled' : '') + ' style="background:#4caf50">▶️ Demarrer</button>' : '<p>⏳ En attente...</p>') + '</div><div style="text-align:center;margin-top:20px"><button onclick="leaveRoom()" style="background:#ff6b6b;color:white;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-size:14px">🚪 Quitter</button></div></div>';
 }

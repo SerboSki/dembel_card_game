@@ -598,8 +598,10 @@ io.on('connection', (socket) => {
                 // Si quelqu'un reste : envoyer mise à jour
                 if (room.hostId === socket.id && room.players.length > 0) {
                     // Si l'hôte s'en va, passer l'hôte au premier joueur
-                    room.hostId = room.players[0].socketId;
-                    room.players[0].isHost = true;
+                    const newHost = room.players[0];
+                    room.hostId = newHost.socketId;
+                    newHost.isHost = true;
+                    console.log('👑 Nouvel hote elu:', newHost.username);
                 }
 
                 io.to(roomId).emit('player_joined', { 
@@ -655,8 +657,10 @@ io.on('connection', (socket) => {
                 // Si quelqu'un reste : envoyer mise à jour
                 if (room.hostId === socket.id && room.players.length > 0) {
                     // Si l'hôte s'en va, passer l'hôte au premier joueur
-                    room.hostId = room.players[0].socketId;
-                    room.players[0].isHost = true;
+                    const newHost = room.players[0];
+                    room.hostId = newHost.socketId;
+                    newHost.isHost = true;
+                    console.log('👑 Nouvel hote elu:', newHost.username);
                 }
 
                 io.to(roomId).emit('player_joined', { 
