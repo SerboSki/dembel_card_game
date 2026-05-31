@@ -14,7 +14,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../public',
+    // Output dans client/dist — le Dockerfile copie vers public/
+    outDir: './dist',
     emptyOutDir: true,
   },
 })
