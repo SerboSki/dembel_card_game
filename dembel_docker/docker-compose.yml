@@ -1,0 +1,38 @@
+services:
+  dembel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GITHUB_BRANCH: develop
+        GITHUB_REPO: https://github.com/SerboSki/dembel_card_game.git
+
+    container_name: dembel_game
+    image: dembel_game:latest
+
+    # Port : 3001 côté hôte → 3000 dans le container
+    ports:
+      - "3001:3000"
+
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+
+    volumes:
+      # Volume persistant pour les données de l'app
+      - /home/nova/dev_dembel_docker/data:/app/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

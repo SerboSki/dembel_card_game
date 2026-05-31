@@ -1,67 +1,122 @@
 # 🃏 Dembel Card Game
 
-> Le jeu de cartes multijoueur en ligne le plus simple.
+> Jeu de cartes multijoueur en ligne inspiré du jeu **Dembel**.
+> Jouez entre amis ou contre des bots, en temps réel.
 
-## Description
+---
 
-**Dembel** est un jeu de cartes multijoueur en ligne développé avec Node.js et Socket.IO. Il permet à plusieurs joueurs de jouer en temps réel via une interface web.
-
-## Stack technique
-
-| Technologie | Usage |
-|---|---|
-| **Node.js** | Serveur backend |
-| **Express** `^4.18.2` | Serveur HTTP & fichiers statiques |
-| **Socket.IO** `^4.6.1` | Communication temps réel (WebSocket) |
-| **JavaScript** | Logique client & serveur (74.6%) |
-| **Python** | Scripts utilitaires (17.3%) |
-| **CSS** | Styles (7.1%) |
-| **HTML** | Interface (1.0%) |
-
-## Structure du projet
+## 📦 Contenu de ce dépôt
 
 ```
-dembel_card_game/
-├── public/             # Fichiers statiques (HTML, CSS, JS client)
-├── old_folder/         # Anciennes versions / archives
-├── server.js           # Point d'entrée du serveur Node.js
-├── package.json        # Dépendances et scripts npm
-├── railway.json        # Configuration déploiement Railway
-└── .gitignore
+/
+├── dembel_game/        ← code source du jeu (à pusher sur GitHub)
+│   ├── server.js       ← serveur Node.js + Socket.io
+│   ├── package.json
+│   ├── .gitignore
+│   ├── README.md
+│   └── client/         ← frontend React + Vite
+│       └── src/
+│           ├── App.jsx
+│           ├── components/
+│           └── hooks/
+│
+└── dembel_docker/      ← configuration Docker uniquement
+    ├── Dockerfile      ← clone GitHub → build → serve
+    ├── docker-compose.yml
+    ├── setup.sh
+    └── README.md
 ```
 
-## Installation
+---
+
+## 🎮 Le jeu
+
+**Dembel** est un jeu de cartes où l'objectif est d'avoir le **moins de points possible**.
+
+### Règles
+
+- Chaque tour : défausser 1 ou plusieurs cartes (même valeur ou suite de même couleur), puis piocher 1 carte (depuis la pioche ou la défausse visible)
+- Quand un joueur estime avoir ≤ 10 points, il peut annoncer **DEMBEL**
+  - ✅ S'il a le score minimum → **0 points** (victoire)
+  - ⚠️ S'il n'a pas le score minimum → score normal
+  - ❌ S'il perd → **score × 2**
+- Le classement final est par ordre **croissant** de points
+
+### Valeurs des cartes
+
+| Carte | Points |
+|-------|--------|
+| As | 1 |
+| 2 – 9 | 2 – 9 |
+| 10 | 10 |
+| Valet | 11 |
+| Dame | 12 |
+| Roi | 13 |
+
+### Joueurs
+
+- 2 à 5 joueurs (humains ou bots)
+- Mode multijoueur en ligne avec code de salle
+- Mode solo contre des bots (1 à 4)
+
+---
+
+## 🛠️ Stack technique
+
+| Côté | Technologie |
+|------|-------------|
+| Serveur | Node.js + Express + Socket.io |
+| Frontend | React 18 + Vite + Framer Motion |
+| Déploiement | Docker (image Alpine) |
+| Temps réel | WebSocket via Socket.io |
+
+---
+
+## 🚀 Lancer le projet
+
+### En local (développement)
 
 ```bash
-# Cloner le dépôt
-git clone https://github.com/SerboSki/dembel_card_game.git
-cd dembel_card_game
-
-# Installer les dépendances
+# Terminal 1 — serveur
+cd dembel_game
 npm install
+node server.js
 
-# Lancer le serveur
-npm start
+# Terminal 2 — client React
+cd dembel_game/client
+npm install
+npm run dev
 ```
 
-## Scripts disponibles
+→ **http://localhost:5173**
+
+### Via Docker (production)
 
 ```bash
-npm start   # Lance le serveur (node server.js)
-npm run dev # Identique à start
+cd dembel_docker
+bash setup.sh
 ```
 
-## Déploiement
+→ **http://localhost:3001**
 
-Le projet est configuré pour un déploiement sur **Railway** via `railway.json` :
+Le Dockerfile clone automatiquement le code depuis GitHub, build le client React et lance le serveur Express.
 
-- **Builder** : Nixpacks
-- **Commande de démarrage** : `npm start`
+### Mettre à jour après un push GitHub
 
-## Branches
+```bash
+cd dembel_docker
+docker compose down
+docker compose up -d --build --no-cache
+```
 
-- `develop` — branche principale de développement
+---
 
-## Licence
+## 📁 Organisation
 
-MIT
+| Dossier | Rôle |
+|---------|------|
+| `dembel_game/` | Code source — **source de vérité** sur GitHub |
+| `dembel_docker/` | Config Docker — clone depuis GitHub, aucun code de jeu |
+
+> Le dossier `dembel_docker/` ne contient **aucun fichier de jeu**.
+> Toute modification du jeu passe par `dembel_game/` → GitHub → rebuild Docker.

@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@700;800&display=swap');
+
+:root {
+  --felt: #1a7a42;
+  --felt-dark: #0f4a28;
+  --gold: #f5c518;
+  --gold-dim: rgba(245,197,24,0.3);
+  --cream: #fdf6e3;
+  --red: #e53935;
+  --black: #1a1a2e;
+  --card-w: 64px;
+  --card-h: 92px;
+  --radius-card: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: radial-gradient(ellipse at 50% 40%, #1e8a4a 0%, #0d4f26 55%, #061a0e 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: #fff;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg,   transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px),
+    repeating-linear-gradient(90deg,  transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+  pointer-events: none; z-index: 0;
+}
+
+#root { position: relative; z-index: 1; }
+
+input[type="text"] {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  background: rgba(255,255,255,0.07);
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #fff;
+  outline: none;
+  transition: all 0.2s;
+}
+input[type="text"]::placeholder { color: rgba(255,255,255,0.28); }
+input[type="text"]:focus {
+  border-color: var(--gold);
+  background: rgba(255,255,255,0.11);
+  box-shadow: 0 0 0 3px rgba(245,197,24,0.15);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }

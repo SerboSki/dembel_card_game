@@ -28,7 +28,8 @@ class DembelGame {
         this.couleurs_symboles = {"Trèfle":"♣","Carreau":"♦","Cœur":"♥","Pique":"♠"};
         this.couleurs_couleur = {"Trèfle":"black","Carreau":"red","Cœur":"red","Pique":"black"};
         this.points_valeur = {};
-        this.valeurs.forEach((v,i)=>{ this.points_valeur[v] = Math.min(i+1,10); });
+        // As=1, 2-9=valeur, 10=10, Valet=11, Dame=12, Roi=13
+        this.valeurs.forEach((v,i)=>{ this.points_valeur[v] = i+1; });
         this.joueurs = [];
         this.manche_actuelle = 1;
         this.pioche = [];
